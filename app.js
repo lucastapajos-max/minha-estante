@@ -48,9 +48,74 @@
   // fecha TODOS os modais — usado antes de abrir qualquer um
   // (garante que nunca fiquem empilhados/travados)
   function fecharModais() {
-    ["modal-add", "modal-manual", "modal-ficha"].forEach((id) => {
+    ["modal-add", "modal-manual", "modal-ficha", "modal-rapido"].forEach((id) => {
       const m = $(id); if (m) m.hidden = true;
     });
+  }
+
+  // ===== progresso compartilhado (ficha + ação rápida) =====
+  // aplica o progresso + data de início automática (#1). Retorna o item atualizado.
+  async function salvarProgresso(item, cur, tot, curv, totv) {
+    const patch = item.kind === "livro"
+      ? { current_page: cur, total_pages: tot }
+      : { current_chapter: cur, total_chapters: tot, current_volume: curv || 0, total_volumes: totv ?? null };
+    if (cur > 0 && item.status === "quero_ler") patch.status = "lendo";
+    if (cur > 0 && !item.started_at) patch.started_at = hojeISO();
+    return Store.update(item.id, patch);
+  }
+  // #2 se chegou ao total, pergunta e conclui. Retorna true se concluiu.
+  async function checarConclusao(novo) {
+    if (temTotal(novo) && progresso(novo) >= 1 && novo.status !== "lido") {
+      if (await perguntarConclusao(novo)) {
+        await Store.update(novo.id, { status: "lido", finished_at: hojeISO() });
+        toast("Leitura concluída! 🎉");
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // #5 ação rápida de progresso (right-click no desktop / long-press no mobile)
+  async function abrirRapido(id) {
+    const it = await Store.get(id);
+    if (!it) return;
+    fecharModais();
+    const ehLivro = it.kind === "livro";
+    const cur = ehLivro ? (it.current_page || 0) : (it.current_chapter || 0);
+    const tot = ehLivro ? it.total_pages : it.total_chapters;
+    const unidade = ehLivro ? "página" : "capítulo";
+    $("rapido-titulo").textContent = it.title;
+    $("rapido-corpo").innerHTML = `
+      <div class="rapido-prog">
+        <button class="rapido-step" id="r-menos" aria-label="menos">−</button>
+        <input class="input" id="r-cur" type="number" inputmode="numeric" value="${cur}">
+        <span class="prog-sep">de ${tot || "?"}</span>
+        <button class="rapido-step" id="r-mais" aria-label="mais">+</button>
+      </div>
+      <div class="prog-dica" style="text-align:center">${unidade} atual</div>
+      <div class="ficha-rodape">
+        <button class="btn-ghost" id="r-cancel">Cancelar</button>
+        <button class="btn-primary" id="r-salvar">Salvar</button>
+      </div>`;
+    $("modal-rapido").hidden = false;
+    const inp = $("r-cur");
+    setTimeout(() => { inp.focus(); inp.select(); }, 40);
+    $("r-mais").onclick = () => { inp.value = (parseInt(inp.value) || 0) + 1; };
+    $("r-menos").onclick = () => { inp.value = Math.max(0, (parseInt(inp.value) || 0) - 1); };
+    $("r-cancel").onclick = () => ($("modal-rapido").hidden = true);
+    const salvar = async () => {
+      const novoCur = parseInt(inp.value) || 0;
+      const novo = ehLivro
+        ? await salvarProgresso(it, novoCur, it.total_pages, 0, null)
+        : await salvarProgresso(it, novoCur, it.total_chapters, it.current_volume || 0, it.total_volumes);
+      $("modal-rapido").hidden = true;
+      renderBiblioteca();
+      toast("Progresso salvo ✓");
+      await checarConclusao(novo);
+      renderBiblioteca();
+    };
+    $("r-salvar").onclick = salvar;
+    inp.addEventListener("keydown", (e) => { if (e.key === "Enter") salvar(); });
   }
 
   // #2 pop-up de conclusão — resolve(true/false)
@@ -209,8 +274,26 @@
       </div>`;
     }).join("");
 
-    wrap.querySelectorAll(".card").forEach((c) =>
-      c.addEventListener("click", () => abrirFicha(c.dataset.id)));
+    wrap.querySelectorAll(".card").forEach((c) => {
+      const cid = c.dataset.id;
+      let lpTimer = null, lpFired = false;
+      // clique normal → ficha (mas ignora o clique-fantasma após long-press)
+      c.addEventListener("click", (e) => {
+        if (lpFired) { lpFired = false; e.preventDefault(); return; }
+        abrirFicha(cid);
+      });
+      // #5 desktop: botão direito → progresso rápido
+      c.addEventListener("contextmenu", (e) => { e.preventDefault(); abrirRapido(cid); });
+      // #5 mobile: pressionar e segurar → progresso rápido
+      c.addEventListener("touchstart", () => {
+        lpFired = false;
+        lpTimer = setTimeout(() => { lpFired = true; abrirRapido(cid); }, 500);
+      }, { passive: true });
+      const cancelaLP = () => clearTimeout(lpTimer);
+      c.addEventListener("touchmove", cancelaLP, { passive: true });
+      c.addEventListener("touchend", cancelaLP);
+      c.addEventListener("touchcancel", cancelaLP);
+    });
   }
 
   // ============================================================
@@ -504,36 +587,16 @@
     async function salvarProg() {
       const cur = parseInt($("f-cur").value) || 0;
       const tot = parseInt($("f-tot").value) || null;
-      const patch = it.kind === "livro"
-        ? { current_page: cur, total_pages: tot }
-        : { current_chapter: cur, total_chapters: tot };
-      if (it.kind !== "livro") {
-        patch.current_volume = parseInt($("f-curv").value) || 0;
-        patch.total_volumes = parseInt($("f-totv").value) || null;
-      }
-      // avanço vira leitura → marca "lendo" se estava "quero ler"
-      if (cur > 0 && it.status === "quero_ler") patch.status = "lendo";
-      // #1 data de início: preenche na PRIMEIRA atualização de progresso
-      if (cur > 0 && !it.started_at) patch.started_at = hojeISO();
-
-      const novo = await Store.update(id, patch);
+      const curv = it.kind !== "livro" ? (parseInt($("f-curv").value) || 0) : 0;
+      const totv = it.kind !== "livro" ? (parseInt($("f-totv").value) || null) : null;
+      const novo = await salvarProgresso(it, cur, tot, curv, totv);
       Object.assign(it, novo);                 // mantém o `it` local em dia
       const p = Math.round(progresso(novo) * 100);
       $("f-barra").style.width = p + "%";
       $("f-pct").textContent = p + "% lido";
-      if (patch.started_at && $("f-inicio")) $("f-inicio").value = patch.started_at;
+      if (novo.started_at && $("f-inicio")) $("f-inicio").value = novo.started_at;
       renderBiblioteca();
-
-      // #2 chegou ao total? pergunta se concluiu
-      if (temTotal(novo) && progresso(novo) >= 1 && novo.status !== "lido") {
-        const concluiu = await perguntarConclusao(novo);
-        if (concluiu) {
-          await Store.update(id, { status: "lido", finished_at: hojeISO() });
-          abrirFicha(id);
-          renderBiblioteca();
-          toast("Leitura concluída! 🎉");
-        }
-      }
+      if (await checarConclusao(novo)) { abrirFicha(id); renderBiblioteca(); }
     }
     ["f-cur", "f-tot", "f-curv", "f-totv"].forEach((fid) => {
       const el = $(fid); if (el) el.addEventListener("change", salvarProg);
@@ -659,6 +722,7 @@
     $("btn-manual").addEventListener("click", () => abrirManual());
     $("manual-fechar").addEventListener("click", () => ($("modal-manual").hidden = true));
     $("ficha-fechar").addEventListener("click", () => ($("modal-ficha").hidden = true));
+    $("rapido-fechar").addEventListener("click", () => ($("modal-rapido").hidden = true));
 
     // fechar modal ao clicar no fundo
     document.querySelectorAll(".modal-bg").forEach((bg) =>

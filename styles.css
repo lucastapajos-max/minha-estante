@@ -269,6 +269,12 @@ label.campo { display: block; margin: 12px 0 5px; font-size: 13px; color: var(--
 .campo-inline { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--txt-suave); font-weight: 600; flex: 1 1 130px; }
 .input-data { color-scheme: dark; }
 
+/* ===== Progresso rápido (#5) ===== */
+.rapido-prog { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 14px 0 4px; }
+.rapido-prog .input { width: 90px; text-align: center; font-size: 18px; }
+.rapido-step { width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--linha); background: var(--bg-card-2); color: var(--txt); font-size: 22px; line-height: 1; display: grid; place-items: center; }
+.rapido-step:hover { border-color: var(--acento); color: var(--acento); }
+
 /* ===== Modal mini (confirmação de conclusão) ===== */
 .modal-mini { max-width: 380px; text-align: center; }
 .conclusao-emoji { font-size: 44px; margin-bottom: 4px; }
