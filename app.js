@@ -259,45 +259,53 @@
   // ============================================================
   //  MODAL CADASTRO MANUAL
   // ============================================================
-  function abrirManual() {
+  // usado como CADASTRO (existente = null) e como EDIÇÃO (existente = item)
+  function abrirManual(existente) {
     fecharModais();
-    const k = ui.kind;
+    const ed = existente || null;
+    const k = ed ? ed.kind : ui.kind;
+    const val = (v) => (v == null ? "" : String(v));
     const progFields = k === "livro"
       ? `<label class="campo">Total de páginas</label>
-         <input class="input" id="m-pages" type="number" inputmode="numeric" placeholder="ex.: 320">`
+         <input class="input" id="m-pages" type="number" inputmode="numeric" placeholder="ex.: 320" value="${ed ? val(ed.total_pages) : ""}">`
       : `<label class="campo">Total de capítulos</label>
-         <input class="input" id="m-chaps" type="number" inputmode="numeric" placeholder="ex.: 120">
+         <input class="input" id="m-chaps" type="number" inputmode="numeric" placeholder="ex.: 120" value="${ed ? val(ed.total_chapters) : ""}">
          <label class="campo">Total de volumes</label>
-         <input class="input" id="m-vols" type="number" inputmode="numeric" placeholder="ex.: 24">`;
+         <input class="input" id="m-vols" type="number" inputmode="numeric" placeholder="ex.: 24" value="${ed ? val(ed.total_volumes) : ""}">`;
 
+    $("manual-titulo").textContent = ed ? "Editar item" : "Cadastro manual";
     $("manual-corpo").innerHTML = `
       <label class="campo">Título *</label>
-      <input class="input" id="m-title" placeholder="Título">
+      <input class="input" id="m-title" placeholder="Título" value="${ed ? esc(ed.title) : ""}">
       <label class="campo">Autor(es) / Artista</label>
-      <input class="input" id="m-authors" placeholder="Nome">
+      <input class="input" id="m-authors" placeholder="Nome" value="${ed ? esc(ed.authors) : ""}">
       <label class="campo">Status</label>
       <select class="input" id="m-status">
-        ${Object.entries(STATUS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("")}
+        ${Object.entries(STATUS).map(([sk, v]) => `<option value="${sk}" ${ed && ed.status === sk ? "selected" : ""}>${v.label}</option>`).join("")}
       </select>
       ${progFields}
       <label class="campo">Categorias / Gêneros</label>
-      <input class="input" id="m-genres" placeholder="Ex.: Fantasia, Aventura (separe por vírgula)">
-      <label class="campo">URL da capa (opcional)</label>
-      <input class="input" id="m-cover" placeholder="https://…">
-      <label class="campo">Sinopse (opcional)</label>
-      <textarea class="input" id="m-syn" placeholder="Resumo…"></textarea>
+      <input class="input" id="m-genres" placeholder="Ex.: Fantasia, Aventura (separe por vírgula)" value="${ed ? esc((ed.genres || []).join(", ")) : ""}">
+      <label class="campo">URL da capa</label>
+      <input class="input" id="m-cover" placeholder="https://…" value="${ed ? esc(ed.cover_url) : ""}">
+      ${ed && ed.cover_url ? `<img src="${esc(ed.cover_url)}" class="edit-capa-preview" alt="">` : ""}
+      <label class="campo">Sinopse</label>
+      <textarea class="input" id="m-syn" placeholder="Resumo…">${ed ? esc(ed.synopsis) : ""}</textarea>
       <div class="ficha-rodape">
         <button class="btn-ghost" id="m-cancel">Cancelar</button>
-        <button class="btn-primary" id="m-salvar">Salvar na estante</button>
+        <button class="btn-primary" id="m-salvar">${ed ? "Salvar alterações" : "Salvar na estante"}</button>
       </div>`;
     $("modal-manual").hidden = false;
 
-    $("m-cancel").onclick = () => ($("modal-manual").hidden = true);
+    $("m-cancel").onclick = () => {
+      $("modal-manual").hidden = true;
+      if (ed) abrirFicha(ed.id);           // volta pra ficha ao cancelar edição
+    };
     $("m-salvar").onclick = async () => {
       const title = $("m-title").value.trim();
       if (!title) { toast("Dê um título ao item"); return; }
-      await Store.add({
-        kind: k, title,
+      const dados = {
+        title,
         authors: $("m-authors").value.trim(),
         status: $("m-status").value,
         cover_url: $("m-cover").value.trim(),
@@ -306,11 +314,18 @@
         total_pages: k === "livro" ? (parseInt($("m-pages").value) || null) : null,
         total_chapters: k !== "livro" ? (parseInt($("m-chaps").value) || null) : null,
         total_volumes: k !== "livro" ? (parseInt($("m-vols").value) || null) : null,
-        source: "manual",
-      });
+      };
       $("modal-manual").hidden = true;
-      toast("Adicionado à estante ✓");
-      renderBiblioteca();
+      if (ed) {
+        await Store.update(ed.id, dados);
+        toast("Alterações salvas ✓");
+        renderBiblioteca();
+        abrirFicha(ed.id);
+      } else {
+        await Store.add({ kind: k, source: "manual", ...dados });
+        toast("Adicionado à estante ✓");
+        renderBiblioteca();
+      }
     };
   }
 
@@ -423,6 +438,7 @@
       ${it.synopsis ? `<div class="ficha-secao"><h4>Sinopse</h4><div class="sinopse">${esc(it.synopsis)}</div></div>` : ""}
 
       <div class="ficha-rodape">
+        <button class="btn-ghost" id="f-editar">✏️ Editar</button>
         <button class="btn-ghost" id="f-fechar2">Fechar</button>
         <button class="btn-perigo" id="f-remover">Remover</button>
       </div>`;
@@ -546,6 +562,7 @@
     $("f-review").addEventListener("change", (e) => Store.update(id, { review: e.target.value }));
 
     // --- rodapé ---
+    $("f-editar").onclick = () => abrirManual(it);
     $("f-fechar2").onclick = () => ($("modal-ficha").hidden = true);
     $("f-remover").onclick = async () => {
       if (!confirm("Remover este título da estante?")) return;
@@ -595,7 +612,7 @@
     $("add-fechar").addEventListener("click", () => ($("modal-add").hidden = true));
     $("add-buscar").addEventListener("click", fazerBusca);
     $("add-input").addEventListener("keydown", (e) => { if (e.key === "Enter") fazerBusca(); });
-    $("btn-manual").addEventListener("click", abrirManual);
+    $("btn-manual").addEventListener("click", () => abrirManual());
     $("manual-fechar").addEventListener("click", () => ($("modal-manual").hidden = true));
     $("ficha-fechar").addEventListener("click", () => ($("modal-ficha").hidden = true));
 
