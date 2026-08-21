@@ -39,6 +39,7 @@ const APIs = (() => {
         total_pages: info.pageCount || null,
         total_chapters: null, total_volumes: null,
         source: "google_books", external_id: v.id || "",
+        language: info.language || "",
       };
     });
   }
@@ -71,12 +72,16 @@ const APIs = (() => {
 
   async function buscarLivros(termo) {
     try {
-      // #6 PT-BR primeiro; completa com resultados gerais (PT no topo)
+      // #6 PT-BR: se houver QUALQUER edição em português, mostra só as PT
       const pt = await googleBooks(termo, true).catch(() => []);
-      if (pt.length >= 5) return pt;
+      const soPt = pt.filter((x) => !x.language || x.language === "pt");
+      if (soPt.length) return soPt;
+      // nenhuma edição PT → amplia, mas joga eventuais PT pro topo
       const geral = await googleBooks(termo, false).catch(() => []);
-      const merged = mesclar(pt, geral);
-      if (merged.length) return merged;
+      if (geral.length) {
+        geral.sort((a, b) => (b.language === "pt") - (a.language === "pt"));
+        return geral;
+      }
       return await openLibrary(termo);   // reserva
     } catch {
       return await openLibrary(termo);   // reserva
@@ -88,13 +93,35 @@ const APIs = (() => {
     const limpo = (termo || "").replace(/[-\s]/g, "");
     return /^(97[89]\d{10}|\d{9}[\dxX])$/.test(limpo) ? limpo : null;
   }
+  // BrasilAPI — melhor cobertura de livros brasileiros por ISBN
+  async function brasilapiISBN(isbn) {
+    const r = await fetch(`https://brasilapi.com.br/api/isbn/v1/${isbn}`);
+    if (!r.ok) return null;
+    const d = await r.json();
+    return {
+      title: d.title || "Sem título",
+      authors: (d.authors || []).join(", "),
+      cover_url: d.cover_url || `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg`,
+      synopsis: d.synopsis || "",
+      genres: d.subjects || [],
+      total_pages: d.page_count || null,
+      total_chapters: null, total_volumes: null,
+      source: "google_books", external_id: isbn,
+    };
+  }
+
   async function buscarISBN(isbn) {
-    // 1) Google Books por isbn:
+    // 1) Google Books por isbn: — dados ricos (autor, capa, páginas) quando tem
     try {
       const g = await googleBooks("isbn:" + isbn, false);
       if (g.length) return g;
     } catch {}
-    // 2) reserva: Open Library pelo endpoint de ISBN
+    // 2) BrasilAPI — cobre ISBN brasileiro que o Google não tem (título ao menos)
+    try {
+      const b = await brasilapiISBN(isbn);
+      if (b) return [b];
+    } catch {}
+    // 3) reserva: Open Library pelo endpoint de ISBN
     try {
       const r = await fetch(`https://openlibrary.org/isbn/${isbn}.json`);
       if (r.ok) {
