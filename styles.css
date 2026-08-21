@@ -211,6 +211,10 @@ input { font-family: inherit; }
 }
 .input:focus { outline: none; border-color: var(--acento); }
 textarea.input { resize: vertical; min-height: 70px; }
+/* remove as setinhas nativas dos campos numéricos (usamos os botões +/−) */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 label.campo { display: block; margin: 12px 0 5px; font-size: 13px; color: var(--txt-suave); font-weight: 600; }
 
 .add-search-row { display: flex; gap: 8px; }

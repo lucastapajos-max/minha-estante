@@ -220,7 +220,9 @@
   // popula os selects de filtro avançado (gênero, ano de leitura, autor)
   function popularFiltrosAvancados(itens) {
     const generos = [...new Set(itens.flatMap((i) => i.genres || []).filter(Boolean))].sort();
-    const anos = [...new Set(itens.map((i) => (i.finished_at || "").slice(0, 4)).filter(Boolean))].sort().reverse();
+    // ano de leitura = ano em que começou OU concluiu (pega livros em andamento também)
+    const anos = [...new Set(itens.flatMap((i) =>
+      [(i.started_at || "").slice(0, 4), (i.finished_at || "").slice(0, 4)]).filter(Boolean))].sort().reverse();
     const autores = [...new Set(itens.map((i) => i.authors).filter(Boolean))].sort();
     const pop = (id, valores, rotulo, atual) => {
       const sel = $(id);
@@ -256,7 +258,8 @@
     // #10 filtros avançados
     if (ui.adv.genero) itens = itens.filter((i) => (i.genres || []).includes(ui.adv.genero));
     if (ui.adv.formato) itens = itens.filter((i) => i.format === ui.adv.formato);
-    if (ui.adv.ano) itens = itens.filter((i) => (i.finished_at || "").slice(0, 4) === ui.adv.ano);
+    if (ui.adv.ano) itens = itens.filter((i) =>
+      (i.started_at || "").slice(0, 4) === ui.adv.ano || (i.finished_at || "").slice(0, 4) === ui.adv.ano);
     if (ui.adv.autor) itens = itens.filter((i) => (i.authors || "") === ui.adv.autor);
 
     wrap.className = "biblioteca " + ui.view;
