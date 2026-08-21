@@ -32,7 +32,8 @@ const APIs = (() => {
       capa = capa.replace("http://", "https://").replace("&edge=curl", "");
       return {
         title: info.title || "Sem título",
-        authors: (info.authors || []).join(", "),
+        // só o 1º autor: nas edições BR o Google costuma pôr o tradutor como 2º
+        authors: (info.authors || [])[0] || "",
         cover_url: capa,
         synopsis: info.description || "",
         genres: info.categories || [],
@@ -53,7 +54,7 @@ const APIs = (() => {
     const j = await r.json();
     return (j.docs || []).map((d) => ({
       title: d.title || "Sem título",
-      authors: (d.author_name || []).slice(0, 3).join(", "),
+      authors: (d.author_name || [])[0] || "",   // só o 1º autor
       cover_url: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : "",
       synopsis: "",
       genres: (d.subject || []).slice(0, 4),
@@ -100,7 +101,7 @@ const APIs = (() => {
     const d = await r.json();
     return {
       title: d.title || "Sem título",
-      authors: (d.authors || []).join(", "),
+      authors: (d.authors || [])[0] || "",   // só o 1º (evita tradutor)
       // default=false → se a OL não tiver capa, dá 404 (mostra o ícone) em vez de imagem em branco
       cover_url: d.cover_url || `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg?default=false`,
       synopsis: d.synopsis || "",
