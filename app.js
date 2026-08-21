@@ -1232,6 +1232,9 @@
     $("btn-sair").hidden = !Store.cloud;   // botão sair só na nuvem
     $("app").hidden = false;
     atualizarBotaoBio();                    // #8 mostra/atualiza o botão de biometria
+    // força o filtro padrão "Lendo" ao abrir (o navegador restaura o <select> antigo)
+    ui.status = "lendo";
+    $("filtro-status").value = "lendo";
     await renderBiblioteca();
   }
 
