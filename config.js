@@ -9,4 +9,4 @@ window.SUPABASE_CONFIG = {
 /* Chave PÚBLICA do push (VAPID / applicationServerKey).
    Gere o par de chaves (ver SETUP-PUSH.md) e cole aqui só a PÚBLICA.
    A privada NUNCA vem pra cá — vai só como segredo do GitHub (robô). */
-window.VAPID_PUBLIC_KEY = "";
+window.VAPID_PUBLIC_KEY = "BMkTMk0u4nKsU4ATbrm3oVheBbyJMptf2XS0Eh7oqPFf0WjsyvOQnZpTBXFLoYX7hqRMf2Gq-7Ve5QzZXOOmVTg";
