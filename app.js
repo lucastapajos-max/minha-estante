@@ -28,7 +28,7 @@
   let colecoesCache = [];                 // coleções (id → nome) pro render e filtros
 
   // ---------- estado da tela ----------
-  const ui = { kind: "livro", status: "todos", view: "grid", filtro: "",
+  const ui = { kind: "livro", status: "lendo", view: "grid", filtro: "",
     adv: { genero: "", formato: "", ano: "", autor: "", colecao: "" } };
 
   // ---------- atalhos ----------
