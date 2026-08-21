@@ -50,7 +50,7 @@
   // fecha TODOS os modais — usado antes de abrir qualquer um
   // (garante que nunca fiquem empilhados/travados)
   function fecharModais() {
-    ["modal-add", "modal-manual", "modal-ficha", "modal-rapido", "modal-stats"].forEach((id) => {
+    ["modal-add", "modal-manual", "modal-ficha", "modal-rapido"].forEach((id) => {
       const m = $(id); if (m) m.hidden = true;
     });
   }
@@ -60,8 +60,7 @@
   // ============================================================
   const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-  async function abrirStats() {
-    fecharModais();
+  async function renderStats() {
     const todos = await Store.list();                 // todos os tipos
     const hoje = new Date();
     const ano = hoje.getFullYear();
@@ -143,14 +142,24 @@
         </div>` : `<div class="meta-txt">Marque livros como "Lido" (com gêneros) pra ver seu ranking.</div>`}
       </div>`;
 
-    $("modal-stats").hidden = false;
-
     $("stats-salvar-meta").onclick = async () => {
       const alvo = parseInt($("stats-meta").value) || 0;
       await Store.setGoal(ano, alvo);
       toast("Meta salva ✓");
-      abrirStats();
+      renderStats();
     };
+  }
+
+  // troca entre as abas do menu inferior (biblioteca / estatísticas)
+  async function mostrarView(view) {
+    const ehStats = view === "stats";
+    $("view-biblioteca").hidden = ehStats;
+    $("view-stats").hidden = !ehStats;
+    $("btn-adicionar").style.display = ehStats ? "none" : "";
+    document.querySelectorAll("#bottom-nav .bn-item").forEach((b) =>
+      b.classList.toggle("is-active", b.dataset.view === view));
+    window.scrollTo(0, 0);
+    if (ehStats) await renderStats();
   }
 
   // ===== progresso compartilhado (ficha + ação rápida) =====
@@ -1005,8 +1014,10 @@
     $("manual-fechar").addEventListener("click", () => ($("modal-manual").hidden = true));
     $("ficha-fechar").addEventListener("click", () => ($("modal-ficha").hidden = true));
     $("rapido-fechar").addEventListener("click", () => ($("modal-rapido").hidden = true));
-    $("btn-stats").addEventListener("click", abrirStats);
-    $("stats-fechar").addEventListener("click", () => ($("modal-stats").hidden = true));
+
+    // menu inferior (Biblioteca / Estatísticas)
+    document.querySelectorAll("#bottom-nav .bn-item").forEach((b) =>
+      b.addEventListener("click", () => mostrarView(b.dataset.view)));
 
     // fechar modal ao clicar no fundo
     document.querySelectorAll(".modal-bg").forEach((bg) =>

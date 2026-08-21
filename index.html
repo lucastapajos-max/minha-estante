@@ -48,12 +48,13 @@
       </div>
       <div class="topbar-actions">
         <button class="btn-primary" id="btn-adicionar">+ Adicionar</button>
-        <button class="icon-btn" id="btn-stats" aria-label="Estatísticas" title="Estatísticas">📊</button>
         <button class="icon-btn" id="btn-bio" aria-label="Bloqueio biométrico" title="Bloqueio biométrico" hidden>🔓</button>
         <button class="icon-btn" id="btn-sair" aria-label="Sair" hidden>⎋</button>
       </div>
     </header>
 
+    <!-- ===== VIEW: Biblioteca ===== -->
+    <div id="view-biblioteca">
     <!-- ===== Abas por categoria ===== -->
     <nav class="tabs" id="tabs">
       <button class="tab is-active" data-kind="livro">Livros</button>
@@ -103,6 +104,18 @@
       <div class="vazio-titulo">Sua estante está vazia por aqui</div>
       <div class="vazio-sub">Toque em <b>+ Adicionar</b> para buscar e cadastrar seu primeiro título.</div>
     </div>
+    </div><!-- /view-biblioteca -->
+
+    <!-- ===== VIEW: Estatísticas ===== -->
+    <section id="view-stats" hidden>
+      <div id="stats-corpo"></div>
+    </section>
+
+    <!-- ===== Menu inferior (mobile-style) ===== -->
+    <nav class="bottom-nav" id="bottom-nav">
+      <button class="bn-item is-active" data-view="biblioteca"><span class="bn-ico">📚</span><span>Biblioteca</span></button>
+      <button class="bn-item" data-view="stats"><span class="bn-ico">📊</span><span>Estatísticas</span></button>
+    </nav>
   </main>
 
   <!-- ================= Modal: Adicionar / Buscar ================= -->
@@ -146,17 +159,6 @@
         <button class="icon-btn" id="manual-fechar" aria-label="Fechar">✕</button>
       </div>
       <div id="manual-corpo"><!-- montado via JS --></div>
-    </div>
-  </div>
-
-  <!-- ================= Modal: Estatísticas (Marco 3) ================= -->
-  <div class="modal-bg" id="modal-stats" hidden>
-    <div class="modal modal-stats">
-      <div class="modal-head">
-        <div class="modal-titulo">📊 Estatísticas</div>
-        <button class="icon-btn" id="stats-fechar" aria-label="Fechar">✕</button>
-      </div>
-      <div id="stats-corpo"></div>
     </div>
   </div>
 
