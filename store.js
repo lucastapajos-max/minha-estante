@@ -102,11 +102,24 @@ const Store = (() => {
       },
       async addSession(itemId, s) {
         const db = _ler();
-        const reg = { id: _uid(), item_id: itemId, date: _agora(), amount: s.amount || 0, unit: s.unit || "paginas", note: s.note || "" };
+        const reg = { id: _uid(), item_id: itemId, date: _agora(), amount: s.amount || 0, unit: s.unit || "paginas", to_pos: s.to_pos ?? null, note: s.note || "" };
         db.sessions.push(reg); _salvar(); return reg;
       },
       async sessionsOf(itemId) {
         return _ler().sessions.filter((s) => s.item_id === itemId).sort((a, b) => b.date.localeCompare(a.date));
+      },
+      async listAllSessions(limit = 200) {
+        const db = _ler();
+        return db.sessions.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, limit)
+          .map((s) => { const it = db.items.find((i) => i.id === s.item_id) || {};
+            return { ...s, item: { title: it.title, cover_url: it.cover_url, kind: it.kind } }; });
+      },
+      async removeSession(id) {
+        const db = _ler(); db.sessions = db.sessions.filter((s) => s.id !== id); _salvar(); return true;
+      },
+      async updateSession(id, patch) {
+        const db = _ler(); const s = db.sessions.find((x) => x.id === id);
+        if (s) Object.assign(s, patch); _salvar(); return s;
       },
       async listCollections() {
         return _ler().collections.slice().sort((a, b) => a.name.localeCompare(b.name));
@@ -187,7 +200,7 @@ const Store = (() => {
         return true;
       },
       async addSession(itemId, s) {
-        const row = { item_id: itemId, amount: s.amount || 0, unit: s.unit || "paginas", note: s.note || "", user_id: await uid() };
+        const row = { item_id: itemId, amount: s.amount || 0, unit: s.unit || "paginas", to_pos: s.to_pos ?? null, note: s.note || "", user_id: await uid() };
         const { data, error } = await sb.from("reading_sessions").insert(row).select().single();
         if (error) throw error;
         return data;
@@ -196,6 +209,21 @@ const Store = (() => {
         const { data, error } = await sb.from("reading_sessions").select("*").eq("item_id", itemId).order("date", { ascending: false });
         if (error) throw error;
         return data || [];
+      },
+      async listAllSessions(limit = 200) {
+        const { data, error } = await sb.from("reading_sessions")
+          .select("*, item:items(title, cover_url, kind)")
+          .order("date", { ascending: false }).limit(limit);
+        if (error) throw error;
+        return data || [];
+      },
+      async removeSession(id) {
+        const { error } = await sb.from("reading_sessions").delete().eq("id", id);
+        if (error) throw error; return true;
+      },
+      async updateSession(id, patch) {
+        const { data, error } = await sb.from("reading_sessions").update(patch).eq("id", id).select().single();
+        if (error) throw error; return data;
       },
 
       // ---- coleções (Onda C) ----
@@ -273,6 +301,9 @@ const Store = (() => {
     remove: (id) => backend.remove(id),
     addSession: (id, s) => backend.addSession(id, s),
     sessionsOf: (id) => backend.sessionsOf(id),
+    listAllSessions: (n) => backend.listAllSessions(n),
+    removeSession: (id) => backend.removeSession(id),
+    updateSession: (id, p) => backend.updateSession(id, p),
     // coleções
     listCollections: () => backend.listCollections(),
     addCollection: (name, kind) => backend.addCollection(name, kind),

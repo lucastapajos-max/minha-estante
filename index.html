@@ -111,12 +111,30 @@
       <div id="stats-corpo"></div>
     </section>
 
+    <!-- ===== VIEW: Histórico de Leitura ===== -->
+    <section id="view-historico" hidden>
+      <h2 class="view-titulo">🕑 Histórico de leitura</h2>
+      <div id="historico-corpo"></div>
+    </section>
+
     <!-- ===== Menu inferior (mobile-style) ===== -->
     <nav class="bottom-nav" id="bottom-nav">
       <button class="bn-item is-active" data-view="biblioteca"><span class="bn-ico">📚</span><span>Biblioteca</span></button>
       <button class="bn-item" data-view="stats"><span class="bn-ico">📊</span><span>Estatísticas</span></button>
+      <button class="bn-item" data-view="historico"><span class="bn-ico">🕑</span><span>Histórico</span></button>
     </nav>
   </main>
+
+  <!-- ================= Modal: editar sessão do histórico ================= -->
+  <div class="modal-bg" id="modal-sessao" hidden>
+    <div class="modal modal-mini">
+      <div class="modal-head">
+        <div class="modal-titulo">Editar registro</div>
+        <button class="icon-btn" id="sessao-fechar" aria-label="Fechar">✕</button>
+      </div>
+      <div id="sessao-corpo"></div>
+    </div>
+  </div>
 
   <!-- ================= Modal: Adicionar / Buscar ================= -->
   <div class="modal-bg" id="modal-add" hidden>

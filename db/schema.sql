@@ -64,6 +64,7 @@ create table if not exists reading_sessions (
   amount     int not null default 0,               -- quanto leu na sessão
   unit       text not null default 'paginas'
                check (unit in ('paginas','capitulos','volumes')),
+  to_pos     int,                                   -- posição final (ex.: capítulo 15)
   note       text default ''
 );
 

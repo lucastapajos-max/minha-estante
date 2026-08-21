@@ -50,7 +50,7 @@
   // fecha TODOS os modais — usado antes de abrir qualquer um
   // (garante que nunca fiquem empilhados/travados)
   function fecharModais() {
-    ["modal-add", "modal-manual", "modal-ficha", "modal-rapido"].forEach((id) => {
+    ["modal-add", "modal-manual", "modal-ficha", "modal-rapido", "modal-sessao"].forEach((id) => {
       const m = $(id); if (m) m.hidden = true;
     });
   }
@@ -59,9 +59,12 @@
   //  MARCO 3 — ESTATÍSTICAS E METAS
   // ============================================================
   const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  const MESES_LONGO = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+  let statsPeriodo = "mes";   // 'semana' | 'mes' | 'ano'
 
   async function renderStats() {
     const todos = await Store.list();                 // todos os tipos
+    const sessoes = await Store.listAllSessions(1000).catch(() => []);
     const hoje = new Date();
     const ano = hoje.getFullYear();
     const mesAtual = hoje.getMonth();                  // 0..11
@@ -89,6 +92,29 @@
     // meta anual
     const meta = await Store.getGoal(ano);
     const pctMeta = meta ? Math.min(100, Math.round((lidosAno.length / meta) * 100)) : 0;
+
+    // #2 volume lido por período (a partir das sessões)
+    const inicioSemana = new Date(hoje); inicioSemana.setDate(hoje.getDate() - 6); inicioSemana.setHours(0, 0, 0, 0);
+    const inicioMes = new Date(ano, mesAtual, 1);
+    const inicioAno = new Date(ano, 0, 1);
+    const desdePorPeriodo = { semana: inicioSemana, mes: inicioMes, ano: inicioAno };
+    const diasPorPeriodo = {
+      semana: 7,
+      mes: hoje.getDate(),
+      ano: Math.ceil((hoje - inicioAno) / 86400000) + 1,
+    };
+    const desde = desdePorPeriodo[statsPeriodo];
+    let volPags = 0, volCaps = 0;
+    sessoes.forEach((s) => {
+      if (new Date(s.date) >= desde) {
+        if (s.unit === "paginas") volPags += s.amount || 0;
+        else volCaps += s.amount || 0;
+      }
+    });
+    const dias = diasPorPeriodo[statsPeriodo];
+    const mediaPags = (volPags / dias).toFixed(1).replace(".0", "");
+    const mediaCaps = (volCaps / dias).toFixed(1).replace(".0", "");
+    const rotuloPeriodo = { semana: "nos últimos 7 dias", mes: `em ${MESES[mesAtual]}`, ano: `em ${ano}` }[statsPeriodo];
 
     $("stats-corpo").innerHTML = `
       <div class="stats-secao">
@@ -120,6 +146,20 @@
       </div>
 
       <div class="stats-secao">
+        <h4>Volume lido</h4>
+        <div class="periodo-toggle" id="periodo-toggle">
+          <button data-p="semana" class="${statsPeriodo === "semana" ? "is-active" : ""}">Semana</button>
+          <button data-p="mes" class="${statsPeriodo === "mes" ? "is-active" : ""}">Mês</button>
+          <button data-p="ano" class="${statsPeriodo === "ano" ? "is-active" : ""}">Ano</button>
+        </div>
+        <div class="stats-nums" style="margin-top:12px">
+          <div class="stat-num"><b>${volPags}</b><span>páginas (livros)</span></div>
+          <div class="stat-num"><b>${volCaps}</b><span>capítulos (mangás/HQs)</span></div>
+        </div>
+        <div class="meta-txt">Média diária ${rotuloPeriodo}: <b>${mediaPags}</b> pág/dia · <b>${mediaCaps}</b> cap/dia</div>
+      </div>
+
+      <div class="stats-secao">
         <h4>Lidos por mês em ${ano}</h4>
         <div class="grafico-mes">
           ${porMes.map((n, idx) => `
@@ -148,29 +188,130 @@
       toast("Meta salva ✓");
       renderStats();
     };
+    $("periodo-toggle").querySelectorAll("button").forEach((b) =>
+      b.addEventListener("click", () => { statsPeriodo = b.dataset.p; renderStats(); }));
   }
 
-  // troca entre as abas do menu inferior (biblioteca / estatísticas)
+  // troca entre as abas do menu inferior (biblioteca / estatísticas / histórico)
   async function mostrarView(view) {
-    const ehStats = view === "stats";
-    $("view-biblioteca").hidden = ehStats;
-    $("view-stats").hidden = !ehStats;
-    $("btn-adicionar").style.display = ehStats ? "none" : "";
+    $("view-biblioteca").hidden = view !== "biblioteca";
+    $("view-stats").hidden = view !== "stats";
+    $("view-historico").hidden = view !== "historico";
+    $("btn-adicionar").style.display = view === "biblioteca" ? "" : "none";
     document.querySelectorAll("#bottom-nav .bn-item").forEach((b) =>
       b.classList.toggle("is-active", b.dataset.view === view));
     window.scrollTo(0, 0);
-    if (ehStats) await renderStats();
+    if (view === "stats") await renderStats();
+    if (view === "historico") await renderHistorico();
+  }
+
+  // ============================================================
+  //  HISTÓRICO DE LEITURA (#3)
+  // ============================================================
+  function descricaoSessao(s) {
+    if (s.unit === "paginas") {
+      return `Leu ${s.amount} página${s.amount === 1 ? "" : "s"}` + (s.to_pos ? ` · até a pág. ${s.to_pos}` : "");
+    }
+    if (s.to_pos) {
+      const de = s.to_pos - s.amount + 1;
+      return s.amount === 1 ? `Leu o cap. ${s.to_pos}` : `Leu do cap. ${de} ao ${s.to_pos}`;
+    }
+    return `Leu ${s.amount} capítulo${s.amount === 1 ? "" : "s"}`;
+  }
+  function mesmoDia(a, b) { return a.toDateString() === b.toDateString(); }
+  function rotuloDia(iso) {
+    const d = new Date(iso), hoje = new Date();
+    const ontem = new Date(hoje); ontem.setDate(hoje.getDate() - 1);
+    if (mesmoDia(d, hoje)) return "Hoje";
+    if (mesmoDia(d, ontem)) return "Ontem";
+    return `${d.getDate()} de ${MESES_LONGO[d.getMonth()]}${d.getFullYear() !== hoje.getFullYear() ? " de " + d.getFullYear() : ""}`;
+  }
+  const horaDe = (iso) => { const d = new Date(iso); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+
+  async function renderHistorico() {
+    const corpo = $("historico-corpo");
+    const sessoes = await Store.listAllSessions(200).catch(() => []);
+    if (!sessoes.length) {
+      corpo.innerHTML = `<div class="hist-vazio">Nenhuma leitura registrada ainda.<br>Atualize o progresso de um título (na ficha ou no botão direito/segurar) que a sessão aparece aqui.</div>`;
+      return;
+    }
+    let html = "", diaAtual = "";
+    sessoes.forEach((s) => {
+      const it = s.item || {};
+      const rot = rotuloDia(s.date);
+      if (rot !== diaAtual) { diaAtual = rot; html += `<div class="hist-dia">${rot}</div>`; }
+      html += `<div class="hist-entry" data-id="${s.id}">
+        <div class="hist-capa">${capaHTML({ cover_url: it.cover_url, kind: it.kind || "livro" }, "hist-capa-img")}</div>
+        <div class="hist-corpo">
+          <div class="hist-titulo">${esc(it.title || "—")}</div>
+          <div class="hist-desc">${descricaoSessao(s)}</div>
+          <div class="hist-hora">${horaDe(s.date)}</div>
+        </div>
+        <div class="hist-acoes">
+          <button class="hist-btn" data-act="editar" aria-label="Editar">✏️</button>
+          <button class="hist-btn" data-act="excluir" aria-label="Excluir">🗑</button>
+        </div>
+      </div>`;
+    });
+    corpo.innerHTML = html;
+    corpo.querySelectorAll(".hist-entry").forEach((el) => {
+      const s = sessoes.find((x) => x.id === el.dataset.id);
+      el.querySelector('[data-act="editar"]').onclick = () => abrirEditarSessao(s);
+      el.querySelector('[data-act="excluir"]').onclick = async () => {
+        if (!confirm("Excluir este registro do histórico?")) return;
+        await Store.removeSession(s.id);
+        toast("Registro excluído");
+        renderHistorico();
+      };
+    });
+  }
+
+  function abrirEditarSessao(s) {
+    const dt = new Date(s.date);
+    const localISO = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    $("sessao-corpo").innerHTML = `
+      <label class="campo">Quantidade lida (${s.unit === "paginas" ? "páginas" : "capítulos"})</label>
+      <input class="input" id="se-amount" type="number" inputmode="numeric" value="${s.amount}">
+      <label class="campo">Data e hora</label>
+      <input class="input input-data" id="se-data" type="datetime-local" value="${localISO}">
+      <div class="ficha-rodape">
+        <button class="btn-ghost" id="se-cancel">Cancelar</button>
+        <button class="btn-primary" id="se-salvar">Salvar</button>
+      </div>`;
+    $("modal-sessao").hidden = false;
+    $("se-cancel").onclick = () => ($("modal-sessao").hidden = true);
+    $("se-salvar").onclick = async () => {
+      const amount = parseInt($("se-amount").value) || 0;
+      const data = $("se-data").value ? new Date($("se-data").value).toISOString() : s.date;
+      await Store.updateSession(s.id, { amount, date: data });
+      $("modal-sessao").hidden = true;
+      toast("Registro atualizado ✓");
+      renderHistorico();
+    };
   }
 
   // ===== progresso compartilhado (ficha + ação rápida) =====
   // aplica o progresso + data de início automática (#1). Retorna o item atualizado.
   async function salvarProgresso(item, cur, tot, curv, totv) {
+    const antes = item.kind === "livro" ? (item.current_page || 0) : (item.current_chapter || 0);
     const patch = item.kind === "livro"
       ? { current_page: cur, total_pages: tot }
       : { current_chapter: cur, total_chapters: tot, current_volume: curv || 0, total_volumes: totv ?? null };
     if (cur > 0 && item.status === "quero_ler") patch.status = "lendo";
     if (cur > 0 && !item.started_at) patch.started_at = hojeISO();
-    return Store.update(item.id, patch);
+    const novo = await Store.update(item.id, patch);
+    // registra a sessão de leitura se avançou (base do histórico e do volume)
+    const delta = cur - antes;
+    if (delta > 0) {
+      try {
+        await Store.addSession(item.id, {
+          amount: delta,
+          unit: item.kind === "livro" ? "paginas" : "capitulos",
+          to_pos: cur,
+        });
+      } catch {}
+    }
+    return novo;
   }
   // #2 se chegou ao total, pergunta e conclui. Retorna true se concluiu.
   async function checarConclusao(novo) {
@@ -620,6 +761,14 @@
         <option value="fisico" ${ed && ed.format === "fisico" ? "selected" : ""}>📖 Físico</option>
         <option value="digital" ${ed && ed.format === "digital" ? "selected" : ""}>💾 Digital</option>
       </select>
+      <div class="datas-linha">
+        <label class="campo-inline">Data de início
+          <input class="input input-data" id="m-inicio" type="date" value="${ed ? val(ed.started_at) : ""}">
+        </label>
+        <label class="campo-inline">Data de conclusão
+          <input class="input input-data" id="m-fim" type="date" value="${ed ? val(ed.finished_at) : ""}">
+        </label>
+      </div>
       <label class="campo">Categorias / Gêneros</label>
       <div class="tags-box" id="m-genres-box"></div>
       <input class="input" id="m-genres-input" placeholder="Digite um gênero e Enter…" autocomplete="off">
@@ -671,6 +820,8 @@
         synopsis: $("m-syn").value.trim(),
         genres: generos,
         format: $("m-format").value || null,
+        started_at: $("m-inicio").value || null,
+        finished_at: $("m-fim").value || null,
         total_pages: k === "livro" ? (parseInt($("m-pages").value) || null) : null,
         total_chapters: k !== "livro" ? (parseInt($("m-chaps").value) || null) : null,
         total_volumes: k !== "livro" ? (parseInt($("m-vols").value) || null) : null,
@@ -1015,9 +1166,10 @@
     $("ficha-fechar").addEventListener("click", () => ($("modal-ficha").hidden = true));
     $("rapido-fechar").addEventListener("click", () => ($("modal-rapido").hidden = true));
 
-    // menu inferior (Biblioteca / Estatísticas)
+    // menu inferior (Biblioteca / Estatísticas / Histórico)
     document.querySelectorAll("#bottom-nav .bn-item").forEach((b) =>
       b.addEventListener("click", () => mostrarView(b.dataset.view)));
+    $("sessao-fechar").addEventListener("click", () => ($("modal-sessao").hidden = true));
 
     // fechar modal ao clicar no fundo
     document.querySelectorAll(".modal-bg").forEach((bg) =>

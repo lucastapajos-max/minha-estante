@@ -348,6 +348,29 @@ label.campo { display: block; margin: 12px 0 5px; font-size: 13px; color: var(--
 .gg-barra { display: block; height: 100%; background: var(--acento); border-radius: 999px; transition: width .3s; }
 .gg-n { flex: 0 0 auto; font-size: 12px; color: var(--txt-suave); font-weight: 600; min-width: 18px; }
 
+/* período (Semana/Mês/Ano) */
+.periodo-toggle { display: inline-flex; background: var(--bg-card); border: 1px solid var(--linha); border-radius: 999px; overflow: hidden; }
+.periodo-toggle button { background: none; border: 0; color: var(--txt-suave); padding: 7px 16px; font-size: 13px; font-weight: 600; }
+.periodo-toggle button.is-active { background: var(--acento); color: #2a1c07; }
+
+/* título de aba (estatísticas/histórico) */
+.view-titulo { font-size: 20px; font-weight: 700; margin: 16px 0 8px; }
+
+/* ===== Histórico de leitura (#3) ===== */
+.hist-vazio { text-align: center; color: var(--txt-fraco); padding: 50px 20px; font-size: 14px; line-height: 1.6; }
+.hist-dia { font-size: 12px; font-weight: 700; color: var(--txt-fraco); text-transform: uppercase; letter-spacing: .5px; margin: 18px 2px 8px; }
+.hist-entry { display: flex; align-items: center; gap: 12px; background: var(--bg-card); border: 1px solid var(--linha); border-radius: var(--raio-sm); padding: 9px 11px; margin-bottom: 8px; }
+.hist-capa { flex: 0 0 auto; }
+.hist-capa-img { width: 38px; height: 56px; object-fit: cover; border-radius: 5px; background: var(--bg-card-2); display: block; }
+.hist-capa-img.fb { display: grid; place-items: center; font-size: 18px; color: var(--txt-fraco); }
+.hist-corpo { flex: 1; min-width: 0; }
+.hist-titulo { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hist-desc { font-size: 13px; color: var(--acento-2); margin-top: 2px; }
+.hist-hora { font-size: 11.5px; color: var(--txt-fraco); margin-top: 3px; }
+.hist-acoes { display: flex; gap: 2px; flex: 0 0 auto; }
+.hist-btn { background: none; border: 0; font-size: 15px; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; opacity: .75; }
+.hist-btn:hover { opacity: 1; background: var(--bg-card-2); }
+
 /* ===== Toast ===== */
 .toast {
   position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
