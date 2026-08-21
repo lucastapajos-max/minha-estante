@@ -50,9 +50,107 @@
   // fecha TODOS os modais — usado antes de abrir qualquer um
   // (garante que nunca fiquem empilhados/travados)
   function fecharModais() {
-    ["modal-add", "modal-manual", "modal-ficha", "modal-rapido"].forEach((id) => {
+    ["modal-add", "modal-manual", "modal-ficha", "modal-rapido", "modal-stats"].forEach((id) => {
       const m = $(id); if (m) m.hidden = true;
     });
+  }
+
+  // ============================================================
+  //  MARCO 3 — ESTATÍSTICAS E METAS
+  // ============================================================
+  const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+  async function abrirStats() {
+    fecharModais();
+    const todos = await Store.list();                 // todos os tipos
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mesAtual = hoje.getMonth();                  // 0..11
+    // classifica pelo fim da leitura (com fallback pra updated_at)
+    const quando = (i) => (i.finished_at || i.updated_at || "");
+    const lidos = todos.filter((i) => i.status === "lido");
+    const lidosAno = lidos.filter((i) => quando(i).slice(0, 4) === String(ano));
+    const lidosMes = lidosAno.filter((i) => Number(quando(i).slice(5, 7)) === mesAtual + 1);
+
+    // por mês (12)
+    const porMes = Array(12).fill(0);
+    lidosAno.forEach((i) => { const m = Number(quando(i).slice(5, 7)); if (m >= 1 && m <= 12) porMes[m - 1]++; });
+    const maxMes = Math.max(1, ...porMes);
+
+    // gêneros mais lidos (entre os lidos)
+    const cont = {};
+    lidos.forEach((i) => (i.genres || []).forEach((g) => { if (g) cont[g] = (cont[g] || 0) + 1; }));
+    const topGen = Object.entries(cont).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    const maxGen = Math.max(1, ...topGen.map(([, n]) => n));
+
+    // por categoria
+    const porTipo = { livro: 0, quadrinho: 0, manga: 0 };
+    lidos.forEach((i) => { if (porTipo[i.kind] != null) porTipo[i.kind]++; });
+
+    // meta anual
+    const meta = await Store.getGoal(ano);
+    const pctMeta = meta ? Math.min(100, Math.round((lidosAno.length / meta) * 100)) : 0;
+
+    $("stats-corpo").innerHTML = `
+      <div class="stats-secao">
+        <h4>Meta de ${ano}</h4>
+        <div class="meta-linha">
+          <input class="input" id="stats-meta" type="number" inputmode="numeric" value="${meta || ""}" placeholder="ex.: 20">
+          <span class="prog-sep">livros/ano</span>
+          <button class="btn-primary" id="stats-salvar-meta">Salvar</button>
+        </div>
+        ${meta ? `
+          <div class="prog-barra" style="margin-top:14px"><i style="width:${pctMeta}%"></i></div>
+          <div class="meta-txt"><b>${lidosAno.length}</b> de <b>${meta}</b> livros — ${pctMeta}%
+            ${lidosAno.length >= meta ? " 🎉 meta batida!" : ` (faltam ${meta - lidosAno.length})`}</div>
+        ` : `<div class="meta-txt">Defina uma meta pra acompanhar seu progresso do ano.</div>`}
+      </div>
+
+      <div class="stats-secao">
+        <h4>Resumo</h4>
+        <div class="stats-nums">
+          <div class="stat-num"><b>${lidos.length}</b><span>lidos no total</span></div>
+          <div class="stat-num"><b>${lidosAno.length}</b><span>em ${ano}</span></div>
+          <div class="stat-num"><b>${lidosMes.length}</b><span>em ${MESES[mesAtual]}</span></div>
+        </div>
+        <div class="stats-tipos">
+          <span>📖 ${porTipo.livro} livros</span>
+          <span>💥 ${porTipo.quadrinho} quadrinhos</span>
+          <span>🎌 ${porTipo.manga} mangás</span>
+        </div>
+      </div>
+
+      <div class="stats-secao">
+        <h4>Lidos por mês em ${ano}</h4>
+        <div class="grafico-mes">
+          ${porMes.map((n, idx) => `
+            <div class="gm-col ${idx === mesAtual ? "gm-atual" : ""}">
+              <div class="gm-barra-wrap"><div class="gm-barra" style="height:${Math.round((n / maxMes) * 100)}%" title="${n} livro(s)">${n ? `<span class="gm-n">${n}</span>` : ""}</div></div>
+              <div class="gm-label">${MESES[idx]}</div>
+            </div>`).join("")}
+        </div>
+      </div>
+
+      <div class="stats-secao">
+        <h4>Gêneros mais lidos</h4>
+        ${topGen.length ? `<div class="grafico-gen">
+          ${topGen.map(([g, n]) => `
+            <div class="gg-linha">
+              <span class="gg-nome">${esc(g)}</span>
+              <span class="gg-barra-wrap"><span class="gg-barra" style="width:${Math.round((n / maxGen) * 100)}%"></span></span>
+              <span class="gg-n">${n}</span>
+            </div>`).join("")}
+        </div>` : `<div class="meta-txt">Marque livros como "Lido" (com gêneros) pra ver seu ranking.</div>`}
+      </div>`;
+
+    $("modal-stats").hidden = false;
+
+    $("stats-salvar-meta").onclick = async () => {
+      const alvo = parseInt($("stats-meta").value) || 0;
+      await Store.setGoal(ano, alvo);
+      toast("Meta salva ✓");
+      abrirStats();
+    };
   }
 
   // ===== progresso compartilhado (ficha + ação rápida) =====
@@ -907,6 +1005,8 @@
     $("manual-fechar").addEventListener("click", () => ($("modal-manual").hidden = true));
     $("ficha-fechar").addEventListener("click", () => ($("modal-ficha").hidden = true));
     $("rapido-fechar").addEventListener("click", () => ($("modal-rapido").hidden = true));
+    $("btn-stats").addEventListener("click", abrirStats);
+    $("stats-fechar").addEventListener("click", () => ($("modal-stats").hidden = true));
 
     // fechar modal ao clicar no fundo
     document.querySelectorAll(".modal-bg").forEach((bg) =>

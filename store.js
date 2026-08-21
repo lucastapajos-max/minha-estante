@@ -69,6 +69,7 @@ const Store = (() => {
       catch { cache = { items: [], sessions: [] }; }
       cache.items = cache.items || []; cache.sessions = cache.sessions || [];
       cache.collections = cache.collections || [];
+      cache.goals = cache.goals || {};        // { "2026": 20, ... }
       return cache;
     }
     const _salvar = () => localStorage.setItem(CHAVE, JSON.stringify(cache));
@@ -121,6 +122,8 @@ const Store = (() => {
         db.items.forEach((i) => { if (i.collection_id === id) i.collection_id = null; });
         _salvar(); return true;
       },
+      async getGoal(year) { return _ler().goals[year] || 0; },
+      async setGoal(year, target) { const db = _ler(); db.goals[year] = target; _salvar(); return target; },
     };
   })();
 
@@ -213,6 +216,17 @@ const Store = (() => {
         if (error) throw error;
         return true;
       },
+      async getGoal(year) {
+        const { data, error } = await sb.from("goals").select("target").eq("year", year).maybeSingle();
+        if (error) throw error;
+        return data ? data.target : 0;
+      },
+      async setGoal(year, target) {
+        const { error } = await sb.from("goals")
+          .upsert({ user_id: await uid(), year, target }, { onConflict: "user_id,year" });
+        if (error) throw error;
+        return target;
+      },
 
       // ---- push (Fase 3) ----
       async salvarInscricaoPush(sub) {
@@ -263,6 +277,8 @@ const Store = (() => {
     listCollections: () => backend.listCollections(),
     addCollection: (name, kind) => backend.addCollection(name, kind),
     removeCollection: (id) => backend.removeCollection(id),
+    getGoal: (y) => backend.getGoal(y),
+    setGoal: (y, t) => backend.setGoal(y, t),
     stats,
     // push
     salvarInscricaoPush: (sub) => backend.salvarInscricaoPush && backend.salvarInscricaoPush(sub),

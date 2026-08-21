@@ -300,6 +300,37 @@ label.campo { display: block; margin: 12px 0 5px; font-size: 13px; color: var(--
 .modal-mini .ficha-rodape { margin-top: 20px; }
 .modal-mini .ficha-rodape .btn-primary { margin-left: auto; }
 
+/* ===== Estatísticas (Marco 3) ===== */
+.modal-stats { max-width: 620px; }
+.stats-secao { margin-top: 20px; }
+.stats-secao > h4 { margin: 0 0 10px; font-size: 13px; color: var(--txt-suave); text-transform: uppercase; letter-spacing: .5px; }
+.meta-linha { display: flex; align-items: center; gap: 10px; }
+.meta-linha .input { width: 100px; text-align: center; }
+.meta-txt { font-size: 13.5px; color: var(--txt-suave); margin-top: 8px; }
+.stats-nums { display: flex; gap: 10px; }
+.stat-num { flex: 1; background: var(--bg-card-2); border-radius: var(--raio-sm); padding: 14px 10px; text-align: center; }
+.stat-num > b { display: block; font-size: 26px; color: var(--acento-2); }
+.stat-num > span { font-size: 12px; color: var(--txt-fraco); }
+.stats-tipos { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 13px; color: var(--txt-suave); }
+
+/* gráfico por mês (barras verticais) */
+.grafico-mes { display: flex; align-items: flex-end; gap: 4px; height: 130px; }
+.gm-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; }
+.gm-barra-wrap { flex: 1; width: 100%; display: flex; align-items: flex-end; }
+.gm-barra { width: 100%; min-height: 3px; background: var(--acento); border-radius: 4px 4px 0 0; position: relative; transition: height .3s; }
+.gm-atual .gm-barra { background: var(--acento-2); }
+.gm-n { position: absolute; top: -16px; left: 0; right: 0; text-align: center; font-size: 11px; color: var(--txt-suave); }
+.gm-label { font-size: 10px; color: var(--txt-fraco); margin-top: 5px; }
+.gm-atual .gm-label { color: var(--acento-2); font-weight: 700; }
+
+/* gêneros mais lidos (barras horizontais) */
+.grafico-gen { display: flex; flex-direction: column; gap: 8px; }
+.gg-linha { display: flex; align-items: center; gap: 10px; }
+.gg-nome { flex: 0 0 34%; font-size: 13px; color: var(--txt); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gg-barra-wrap { flex: 1; background: var(--bg-card-2); border-radius: 999px; height: 14px; overflow: hidden; }
+.gg-barra { display: block; height: 100%; background: var(--acento); border-radius: 999px; transition: width .3s; }
+.gg-n { flex: 0 0 auto; font-size: 12px; color: var(--txt-suave); font-weight: 600; min-width: 18px; }
+
 /* ===== Toast ===== */
 .toast {
   position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
