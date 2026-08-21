@@ -133,11 +133,11 @@ const APIs = (() => {
     }
   }
 
-  // ---------- MangaDex: último capítulo lançado ----------
+  // ---------- MangaDex: id + último capítulo lançado ----------
   // Jikan/AniList deixam o total vazio enquanto a obra está em andamento.
   // A MangaDex rastreia capítulo a capítulo, então dá pra descobrir quantos
-  // já saíram. Retorna um inteiro (ex.: 74) ou null se não achar.
-  async function mangadexUltimoCapitulo(titulo) {
+  // já saíram. Retorna { id, ultimo } ou null.
+  async function mangadexInfo(titulo) {
     try {
       const s = await fetch("https://api.mangadex.org/manga?limit=1&title=" + encodeURIComponent(titulo));
       if (!s.ok) return null;
@@ -145,14 +145,19 @@ const APIs = (() => {
       const m = sj.data && sj.data[0];
       if (!m) return null;
       const c = await fetch(`https://api.mangadex.org/chapter?manga=${m.id}&limit=1&order[chapter]=desc`);
-      if (!c.ok) return null;
+      if (!c.ok) return { id: m.id, ultimo: null };
       const cj = await c.json();
       const cap = cj.data && cj.data[0] && cj.data[0].attributes.chapter;
       const n = Math.floor(parseFloat(cap));
-      return Number.isFinite(n) && n > 0 ? n : null;
+      return { id: m.id, ultimo: Number.isFinite(n) && n > 0 ? n : null };
     } catch {
       return null;
     }
+  }
+  // atalho: só o número do último capítulo (mantém compatibilidade)
+  async function mangadexUltimoCapitulo(titulo) {
+    const info = await mangadexInfo(titulo);
+    return info ? info.ultimo : null;
   }
 
   // ---------- roteador por categoria ----------
@@ -163,5 +168,5 @@ const APIs = (() => {
     return buscarLivros(termo); // livro e quadrinho
   }
 
-  return { buscar, googleBooks, openLibrary, jikanManga, anilistManga, mangadexUltimoCapitulo };
+  return { buscar, googleBooks, openLibrary, jikanManga, anilistManga, mangadexInfo, mangadexUltimoCapitulo };
 })();

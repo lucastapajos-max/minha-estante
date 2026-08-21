@@ -1,7 +1,7 @@
 /* Service worker — "rede primeiro" pro app.
    Online: sempre pega a versão fresca (e atualiza o cache).
    Offline: cai pro cache. Evita ficar preso em versão antiga. */
-const VERSAO = "estante-v7";
+const VERSAO = "estante-v8";
 const SHELL = [
   "./", "index.html", "styles.css",
   "config.js", "vendor/supabase.js",
@@ -18,6 +18,34 @@ self.addEventListener("activate", (e) => {
     caches.keys()
       .then((ks) => Promise.all(ks.filter((k) => k !== VERSAO).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
+  );
+});
+
+// ===== PUSH: notificação de capítulo novo (chega com o app fechado) =====
+self.addEventListener("push", (e) => {
+  let dados = {};
+  try { dados = e.data ? e.data.json() : {}; } catch { dados = { body: e.data && e.data.text() }; }
+  const titulo = dados.title || "Novo capítulo!";
+  const opts = {
+    body: dados.body || "",
+    icon: "icon.svg",
+    badge: "icon.svg",
+    tag: dados.tag || undefined,          // agrupa notificações do mesmo mangá
+    data: { url: dados.url || "./" },
+    vibrate: [80, 40, 80],
+  };
+  e.waitUntil(self.registration.showNotification(titulo, opts));
+});
+
+// clicar na notificação abre (ou foca) o app
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const alvo = (e.notification.data && e.notification.data.url) || "./";
+  e.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((wins) => {
+      for (const w of wins) { if ("focus" in w) return w.focus(); }
+      if (clients.openWindow) return clients.openWindow(alvo);
+    })
   );
 });
 

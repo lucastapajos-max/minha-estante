@@ -1,0 +1,28 @@
+name: Checar novos capítulos (push)
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"     # a cada 6 horas
+  workflow_dispatch:            # permite rodar na mão pelo botão do GitHub
+
+jobs:
+  checar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências
+        run: pip install requests pywebpush
+
+      - name: Rodar o robô
+        env:
+          SUPABASE_URL: https://mtiknwxmnhlguspaazgh.supabase.co
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: mailto:lucastapajos@gmail.com
+          APP_URL: https://minha-estante.lucastapajos.workers.dev
+        run: python robo/check_chapters.py

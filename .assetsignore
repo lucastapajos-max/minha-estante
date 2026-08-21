@@ -6,3 +6,5 @@ wrangler.toml
 *.md
 config.example.js
 db
+robo
+.github

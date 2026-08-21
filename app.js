@@ -41,6 +41,37 @@
     });
   }
 
+  // ===== PUSH (notificações) =====
+  function urlBase64ToUint8Array(base64) {
+    const pad = "=".repeat((4 - (base64.length % 4)) % 4);
+    const b64 = (base64 + pad).replace(/-/g, "+").replace(/_/g, "/");
+    const raw = atob(b64);
+    return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+  }
+
+  // pede permissão, inscreve no push e salva a inscrição na nuvem.
+  // retorna true se deu certo.
+  async function assinarPush() {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      toast("Este navegador não suporta push"); return false;
+    }
+    if (!window.VAPID_PUBLIC_KEY) {
+      toast("Push ainda não configurado (falta a chave VAPID)"); return false;
+    }
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") { toast("Permissão de notificação negada"); return false; }
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(window.VAPID_PUBLIC_KEY),
+      });
+    }
+    await Store.salvarInscricaoPush(sub);
+    return true;
+  }
+
   function capaHTML(item, cls) {
     if (item.cover_url) {
       return `<img class="${cls}" src="${esc(item.cover_url)}" alt="" loading="lazy"
@@ -300,6 +331,18 @@
     const generos = (it.genres || []).slice(0, 6)
       .map((g) => `<span class="tag-genero">${esc(g)}</span>`).join("");
 
+    // bloco de notificação: só faz sentido em mangá + modo nuvem (depende do robô)
+    const notifBloco = (it.kind === "manga" && Store.cloud) ? `
+      <div class="ficha-secao">
+        <h4>Notificações</h4>
+        <button class="${it.notify ? "btn-primary" : "btn-ghost"}" id="f-notify">
+          ${it.notify ? "🔔 Avisos ligados — desligar" : "🔔 Avisar quando sair capítulo novo"}
+        </button>
+        <div class="prog-dica">${it.notify
+          ? `Vigiando a partir do capítulo ${it.last_notified_chapter || "?"}. Você recebe um push quando sair um novo — mesmo com o app fechado.`
+          : "Recebe um push (Android/desktop) assim que um novo capítulo for lançado."}</div>
+      </div>` : "";
+
     corpo.innerHTML = `
       <div class="ficha-topo">
         ${capaHTML(it, "ficha-capa")}
@@ -333,6 +376,8 @@
         <h4>Resenha e anotações</h4>
         <textarea class="input" id="f-review" placeholder="O que achou? (sem spoiler)">${esc(it.review)}</textarea>
       </div>
+
+      ${notifBloco}
 
       ${it.synopsis ? `<div class="ficha-secao"><h4>Sinopse</h4><div class="sinopse">${esc(it.synopsis)}</div></div>` : ""}
 
@@ -388,6 +433,32 @@
         btnDet.textContent = "🔄 detectar lançados";
         toast("Não encontrei na MangaDex — preencha manualmente");
       }
+    });
+
+    // --- notificações (🔔) ---
+    const btnNotify = $("f-notify");
+    if (btnNotify) btnNotify.addEventListener("click", async () => {
+      if (it.notify) {                              // já ligado → desligar
+        await Store.update(id, { notify: false });
+        it.notify = false;
+        abrirFicha(id);
+        toast("Avisos desligados");
+        return;
+      }
+      btnNotify.disabled = true; btnNotify.textContent = "Ativando…";
+      const ok = await assinarPush();
+      if (!ok) { abrirFicha(id); return; }
+      // baseline: id e último capítulo na MangaDex (só avisa dos PRÓXIMOS)
+      const info = await APIs.mangadexInfo(it.title);
+      const baseline = (info && info.ultimo) || it.total_chapters || it.current_chapter || 0;
+      await Store.update(id, {
+        notify: true,
+        mangadex_id: (info && info.id) || "",
+        last_notified_chapter: baseline,
+      });
+      it.notify = true;
+      abrirFicha(id);
+      toast("🔔 Avisos ligados!");
     });
 
     // --- estrelas ---
