@@ -1,0 +1,16 @@
+{
+  "name": "Estante — minhas leituras",
+  "short_name": "Estante",
+  "description": "Organize e acompanhe suas leituras de livros, quadrinhos e mangás.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#16130f",
+  "theme_color": "#e0a458",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

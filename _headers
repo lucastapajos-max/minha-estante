@@ -1,0 +1,7 @@
+# Cloudflare Pages — cabeçalhos
+# O service worker não pode ficar preso em cache, senão as atualizações não chegam.
+/sw.js
+  Cache-Control: no-cache
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json

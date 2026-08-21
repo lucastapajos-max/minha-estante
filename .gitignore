@@ -1,0 +1,8 @@
+# config.js carrega a anon key do Supabase — que é PÚBLICA por design
+# (o RLS protege os dados). Como o deploy é via git, o config.js PRECISA
+# ir junto no repo — por isso NÃO o ignoramos aqui.
+# >> Mantenha o repositório PRIVADO e NUNCA coloque a chave service_role. <<
+
+# lixo comum
+.DS_Store
+Thumbs.db
