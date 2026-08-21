@@ -95,9 +95,18 @@
     return true;
   }
 
+  // capas da Open Library por ISBN devolvem imagem em BRANCO quando não existem;
+  // ?default=false faz virar 404 → aí o onerror mostra o ícone de reserva.
+  function capaURL(u) {
+    if (u && u.includes("covers.openlibrary.org/b/isbn/") && !u.includes("default=false")) {
+      return u + (u.includes("?") ? "&" : "?") + "default=false";
+    }
+    return u;
+  }
+
   function capaHTML(item, cls) {
     if (item.cover_url) {
-      return `<img class="${cls}" src="${esc(item.cover_url)}" alt="" loading="lazy"
+      return `<img class="${cls}" src="${esc(capaURL(item.cover_url))}" alt="" loading="lazy"
               onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'${cls} fb',textContent:'${KIND[item.kind].emoji}'}))">`;
     }
     return `<div class="${cls} fb">${KIND[item.kind].emoji}</div>`;
@@ -224,7 +233,8 @@
         const div = document.createElement("div");
         div.className = "res-item";
         const capa = r.cover_url
-          ? `<img class="res-capa" src="${esc(r.cover_url)}" alt="" loading="lazy">`
+          ? `<img class="res-capa" src="${esc(capaURL(r.cover_url))}" alt="" loading="lazy"
+               onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'res-capa fb',textContent:'${KIND[ui.kind].emoji}'}))">`
           : `<div class="res-capa fb">${KIND[ui.kind].emoji}</div>`;
         const meta = r.total_pages ? `${r.total_pages} págs`
           : r.total_chapters ? `${r.total_chapters} caps`
@@ -288,7 +298,7 @@
       <input class="input" id="m-genres" placeholder="Ex.: Fantasia, Aventura (separe por vírgula)" value="${ed ? esc((ed.genres || []).join(", ")) : ""}">
       <label class="campo">URL da capa</label>
       <input class="input" id="m-cover" placeholder="https://…" value="${ed ? esc(ed.cover_url) : ""}">
-      ${ed && ed.cover_url ? `<img src="${esc(ed.cover_url)}" class="edit-capa-preview" alt="">` : ""}
+      ${ed && ed.cover_url ? `<img src="${esc(capaURL(ed.cover_url))}" class="edit-capa-preview" alt="" onerror="this.style.display='none'">` : ""}
       <label class="campo">Sinopse</label>
       <textarea class="input" id="m-syn" placeholder="Resumo…">${ed ? esc(ed.synopsis) : ""}</textarea>
       <div class="ficha-rodape">

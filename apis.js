@@ -101,7 +101,8 @@ const APIs = (() => {
     return {
       title: d.title || "Sem título",
       authors: (d.authors || []).join(", "),
-      cover_url: d.cover_url || `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg`,
+      // default=false → se a OL não tiver capa, dá 404 (mostra o ícone) em vez de imagem em branco
+      cover_url: d.cover_url || `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg?default=false`,
       synopsis: d.synopsis || "",
       genres: d.subjects || [],
       total_pages: d.page_count || null,
