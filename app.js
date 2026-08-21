@@ -18,6 +18,14 @@
     manga:     { label: "Mangá",     emoji: "🎌", unidade: "capítulos" },
   };
 
+  // gêneros comuns por categoria (sugestões clicáveis)
+  const GENEROS_COMUNS = {
+    livro: ["Fantasia", "Ficção científica", "Romance", "Suspense", "Terror", "Aventura", "Drama", "Mistério", "Biografia", "História", "Autoajuda", "Poesia", "Clássico", "Distopia", "Conto"],
+    quadrinho: ["Super-heróis", "Ação", "Aventura", "Ficção científica", "Fantasia", "Terror", "Humor", "Drama", "Graphic Novel"],
+    manga: ["Shounen", "Shoujo", "Seinen", "Josei", "Ação", "Aventura", "Comédia", "Romance", "Terror", "Slice of Life", "Fantasia", "Ficção científica", "Esporte", "Sobrenatural", "Mistério", "Drama"],
+  };
+  const generosConhecidos = new Set();   // gêneros que já aparecem na estante
+
   // ---------- estado da tela ----------
   const ui = { kind: "livro", status: "todos", view: "grid", filtro: "" };
 
@@ -149,6 +157,9 @@
   async function renderBiblioteca() {
     const wrap = $("biblioteca");
     let itens = await Store.list(ui.kind);
+
+    // alimenta o banco de gêneros conhecidos (pras sugestões do editor)
+    itens.forEach((i) => (i.genres || []).forEach((g) => g && generosConhecidos.add(g)));
 
     if (ui.status !== "todos") itens = itens.filter((i) => i.status === ui.status);
     if (ui.filtro) {
@@ -295,7 +306,9 @@
       </select>
       ${progFields}
       <label class="campo">Categorias / Gêneros</label>
-      <input class="input" id="m-genres" placeholder="Ex.: Fantasia, Aventura (separe por vírgula)" value="${ed ? esc((ed.genres || []).join(", ")) : ""}">
+      <div class="tags-box" id="m-genres-box"></div>
+      <input class="input" id="m-genres-input" placeholder="Digite um gênero e Enter…" autocomplete="off">
+      <div class="tags-sug" id="m-genres-sug"></div>
       <label class="campo">URL da capa</label>
       <input class="input" id="m-cover" placeholder="https://…" value="${ed ? esc(ed.cover_url) : ""}">
       ${ed && ed.cover_url ? `<img src="${esc(capaURL(ed.cover_url))}" class="edit-capa-preview" alt="" onerror="this.style.display='none'">` : ""}
@@ -306,6 +319,27 @@
         <button class="btn-primary" id="m-salvar">${ed ? "Salvar alterações" : "Salvar na estante"}</button>
       </div>`;
     $("modal-manual").hidden = false;
+
+    // ----- editor de gêneros (tags clicáveis) -----
+    const generos = ed ? [...(ed.genres || [])] : [];
+    const boxG = $("m-genres-box"), inputG = $("m-genres-input"), sugG = $("m-genres-sug");
+    const temG = (g) => generos.some((x) => x.toLowerCase() === g.toLowerCase());
+    const addG = (g) => { g = (g || "").trim(); if (g && !temG(g)) { generos.push(g); generosConhecidos.add(g); renderG(); } };
+    const rmG = (g) => { const i = generos.indexOf(g); if (i >= 0) generos.splice(i, 1); renderG(); };
+    function renderG() {
+      boxG.innerHTML = generos.length
+        ? generos.map((g) => `<span class="tag-chip">${esc(g)}<button type="button" class="tag-remove" data-g="${esc(g)}">×</button></span>`).join("")
+        : `<span class="tags-vazio">Nenhum gênero ainda</span>`;
+      boxG.querySelectorAll(".tag-remove").forEach((b) => (b.onclick = () => rmG(b.dataset.g)));
+      const sug = [...new Set([...(GENEROS_COMUNS[k] || []), ...generosConhecidos])].filter((g) => !temG(g)).slice(0, 18);
+      sugG.innerHTML = sug.map((g) => `<button type="button" class="tag-sug" data-g="${esc(g)}">+ ${esc(g)}</button>`).join("");
+      sugG.querySelectorAll(".tag-sug").forEach((b) => (b.onclick = () => addG(b.dataset.g)));
+    }
+    inputG.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addG(inputG.value); inputG.value = ""; }
+    });
+    inputG.addEventListener("blur", () => { if (inputG.value.trim()) { addG(inputG.value); inputG.value = ""; } });
+    renderG();
 
     $("m-cancel").onclick = () => {
       $("modal-manual").hidden = true;
@@ -320,7 +354,7 @@
         status: $("m-status").value,
         cover_url: $("m-cover").value.trim(),
         synopsis: $("m-syn").value.trim(),
-        genres: $("m-genres").value.split(",").map((s) => s.trim()).filter(Boolean),
+        genres: generos,
         total_pages: k === "livro" ? (parseInt($("m-pages").value) || null) : null,
         total_chapters: k !== "livro" ? (parseInt($("m-chaps").value) || null) : null,
         total_volumes: k !== "livro" ? (parseInt($("m-vols").value) || null) : null,
