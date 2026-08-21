@@ -23,6 +23,10 @@
 
   // ---------- atalhos ----------
   const $ = (id) => document.getElementById(id);
+  const hojeISO = () => {
+    const d = new Date(); const p = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  };
   const esc = (s) => (s || "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -38,6 +42,25 @@
   function fecharModais() {
     ["modal-add", "modal-manual", "modal-ficha"].forEach((id) => {
       const m = $(id); if (m) m.hidden = true;
+    });
+  }
+
+  // #2 pop-up de conclusão — resolve(true/false)
+  function perguntarConclusao(item) {
+    return new Promise((resolve) => {
+      const bg = $("modal-conclusao");
+      $("conclusao-txt").textContent = `"${item.title}" chegou ao fim. Marcar como concluída?`;
+      bg.hidden = false;
+      const fim = (v) => {
+        bg.hidden = true;
+        $("conclusao-sim").onclick = null;
+        $("conclusao-nao").onclick = null;
+        bg.onclick = null;
+        resolve(v);
+      };
+      $("conclusao-sim").onclick = () => fim(true);
+      $("conclusao-nao").onclick = () => fim(false);
+      bg.onclick = (e) => { if (e.target === bg) fim(false); };
     });
   }
 
@@ -180,7 +203,10 @@
     $("add-titulo").textContent = "Adicionar — " + KIND[ui.kind].label;
     $("add-hint").textContent = ui.kind === "manga"
       ? "Buscando em Jikan / MyAnimeList."
-      : "Buscando no Google Books.";
+      : "Edições em português primeiro. Dica: cole um ISBN (10 ou 13 dígitos) pra busca exata.";
+    $("add-input").placeholder = ui.kind === "manga"
+      ? "Buscar mangá por título…"
+      : "Título, autor ou ISBN…";
     $("modal-add").hidden = false;
     setTimeout(() => $("add-input").focus(), 50);
   }
@@ -254,6 +280,8 @@
         ${Object.entries(STATUS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("")}
       </select>
       ${progFields}
+      <label class="campo">Categorias / Gêneros</label>
+      <input class="input" id="m-genres" placeholder="Ex.: Fantasia, Aventura (separe por vírgula)">
       <label class="campo">URL da capa (opcional)</label>
       <input class="input" id="m-cover" placeholder="https://…">
       <label class="campo">Sinopse (opcional)</label>
@@ -274,6 +302,7 @@
         status: $("m-status").value,
         cover_url: $("m-cover").value.trim(),
         synopsis: $("m-syn").value.trim(),
+        genres: $("m-genres").value.split(",").map((s) => s.trim()).filter(Boolean),
         total_pages: k === "livro" ? (parseInt($("m-pages").value) || null) : null,
         total_chapters: k !== "livro" ? (parseInt($("m-chaps").value) || null) : null,
         total_volumes: k !== "livro" ? (parseInt($("m-vols").value) || null) : null,
@@ -366,6 +395,18 @@
       </div>
 
       <div class="ficha-secao">
+        <h4>Datas</h4>
+        <div class="datas-linha">
+          <label class="campo-inline">Início
+            <input class="input input-data" id="f-inicio" type="date" value="${it.started_at || ""}">
+          </label>
+          <label class="campo-inline">Conclusão
+            <input class="input input-data" id="f-fim" type="date" value="${it.finished_at || ""}">
+          </label>
+        </div>
+      </div>
+
+      <div class="ficha-secao">
         <h4>Avaliação</h4>
         <div class="estrelas" id="f-estrelas">
           ${[1,2,3,4,5].map((n) => `<span class="estrela ${it.rating >= n ? "on" : ""}" data-n="${n}">★</span>`).join("")}
@@ -391,7 +432,11 @@
     // --- status ---
     corpo.querySelectorAll(".status-op").forEach((b) =>
       b.addEventListener("click", async () => {
-        await Store.update(id, { status: b.dataset.status });
+        const novoStatus = b.dataset.status;
+        const patch = { status: novoStatus };
+        // marcar "Lido" registra a data de conclusão (se ainda não houver)
+        if (novoStatus === "lido" && !it.finished_at) patch.finished_at = hojeISO();
+        await Store.update(id, patch);
         abrirFicha(id); renderBiblioteca();
       }));
 
@@ -408,15 +453,39 @@
       }
       // avanço vira leitura → marca "lendo" se estava "quero ler"
       if (cur > 0 && it.status === "quero_ler") patch.status = "lendo";
+      // #1 data de início: preenche na PRIMEIRA atualização de progresso
+      if (cur > 0 && !it.started_at) patch.started_at = hojeISO();
+
       const novo = await Store.update(id, patch);
+      Object.assign(it, novo);                 // mantém o `it` local em dia
       const p = Math.round(progresso(novo) * 100);
       $("f-barra").style.width = p + "%";
       $("f-pct").textContent = p + "% lido";
+      if (patch.started_at && $("f-inicio")) $("f-inicio").value = patch.started_at;
       renderBiblioteca();
+
+      // #2 chegou ao total? pergunta se concluiu
+      if (temTotal(novo) && progresso(novo) >= 1 && novo.status !== "lido") {
+        const concluiu = await perguntarConclusao(novo);
+        if (concluiu) {
+          await Store.update(id, { status: "lido", finished_at: hojeISO() });
+          abrirFicha(id);
+          renderBiblioteca();
+          toast("Leitura concluída! 🎉");
+        }
+      }
     }
     ["f-cur", "f-tot", "f-curv", "f-totv"].forEach((fid) => {
       const el = $(fid); if (el) el.addEventListener("change", salvarProg);
     });
+
+    // --- datas (editáveis) ---
+    const fInicio = $("f-inicio");
+    if (fInicio) fInicio.addEventListener("change", (e) =>
+      Store.update(id, { started_at: e.target.value || null }));
+    const fFim = $("f-fim");
+    if (fFim) fFim.addEventListener("change", (e) =>
+      Store.update(id, { finished_at: e.target.value || null }));
 
     // --- detectar capítulos lançados (MangaDex) ---
     const btnDet = $("f-detectar");
@@ -500,14 +569,11 @@
         renderBiblioteca();
       }));
 
-    // filtros de status
-    $("filtros-status").querySelectorAll(".chip").forEach((c) =>
-      c.addEventListener("click", () => {
-        $("filtros-status").querySelector(".is-active").classList.remove("is-active");
-        c.classList.add("is-active");
-        ui.status = c.dataset.status;
-        renderBiblioteca();
-      }));
+    // filtro de status (dropdown #4)
+    $("filtro-status").addEventListener("change", (e) => {
+      ui.status = e.target.value;
+      renderBiblioteca();
+    });
 
     // grade/lista
     $("view-toggle").querySelectorAll(".vt").forEach((v) =>

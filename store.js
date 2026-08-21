@@ -42,6 +42,10 @@ const Store = (() => {
       notify: item.notify ?? false,
       mangadex_id: item.mangadex_id || "",
       last_notified_chapter: item.last_notified_chapter ?? null,
+      started_at: item.started_at ?? null,
+      finished_at: item.finished_at ?? null,
+      format: item.format ?? null,          // 'fisico' | 'digital' | null
+      collection_id: item.collection_id ?? null,
     };
   }
 

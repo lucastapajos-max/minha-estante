@@ -49,20 +49,19 @@
 
     <!-- ===== Barra de filtros ===== -->
     <div class="toolbar">
-      <div class="chips" id="filtros-status">
-        <button class="chip is-active" data-status="todos">Todos</button>
-        <button class="chip" data-status="lendo">Lendo</button>
-        <button class="chip" data-status="quero_ler">Quero ler</button>
-        <button class="chip" data-status="lido">Lido</button>
-        <button class="chip" data-status="pausado">Pausado</button>
-        <button class="chip" data-status="abandonado">Abandonado</button>
-      </div>
-      <div class="toolbar-right">
-        <input type="search" id="busca-local" class="input-busca" placeholder="Filtrar na estante…" autocomplete="off">
-        <div class="view-toggle" id="view-toggle">
-          <button class="vt is-active" data-view="grid" aria-label="Grade">▦</button>
-          <button class="vt" data-view="list" aria-label="Lista">≣</button>
-        </div>
+      <input type="search" id="busca-local" class="input-busca" placeholder="Filtrar na estante…" autocomplete="off">
+      <!-- #4 seletor de status: entre o filtro e o toggle de visão -->
+      <select id="filtro-status" class="select-status">
+        <option value="todos">Todos os status</option>
+        <option value="lendo">Lendo</option>
+        <option value="quero_ler">Quero ler</option>
+        <option value="lido">Lido</option>
+        <option value="pausado">Pausado</option>
+        <option value="abandonado">Abandonado</option>
+      </select>
+      <div class="view-toggle" id="view-toggle">
+        <button class="vt is-active" data-view="grid" aria-label="Grade">▦</button>
+        <button class="vt" data-view="list" aria-label="Lista">≣</button>
       </div>
     </div>
 
@@ -118,6 +117,19 @@
         <button class="icon-btn" id="manual-fechar" aria-label="Fechar">✕</button>
       </div>
       <div id="manual-corpo"><!-- montado via JS --></div>
+    </div>
+  </div>
+
+  <!-- ================= Modal: Conclusão de leitura (#2) ================= -->
+  <div class="modal-bg" id="modal-conclusao" hidden>
+    <div class="modal modal-mini">
+      <div class="conclusao-emoji">🎉</div>
+      <div class="modal-titulo" style="text-align:center">Você finalizou esta leitura?</div>
+      <div class="conclusao-txt" id="conclusao-txt">Chegou ao fim! Marcar como concluída?</div>
+      <div class="ficha-rodape">
+        <button class="btn-ghost" id="conclusao-nao">Ainda não</button>
+        <button class="btn-primary" id="conclusao-sim">Concluir leitura ✓</button>
+      </div>
     </div>
   </div>
 

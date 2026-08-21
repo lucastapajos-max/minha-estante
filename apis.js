@@ -19,8 +19,10 @@ const APIs = (() => {
   const limpaHTML = (s) => (s || "").replace(/<[^>]*>/g, "").replace(/\s+\n/g, "\n").trim();
 
   // ---------- Google Books ----------
-  async function googleBooks(termo) {
-    const url = "https://www.googleapis.com/books/v1/volumes?maxResults=12&q=" + encodeURIComponent(termo);
+  // ptOnly=true restringe a edições em português (langRestrict=pt)
+  async function googleBooks(termo, ptOnly) {
+    let url = "https://www.googleapis.com/books/v1/volumes?maxResults=12&country=BR&q=" + encodeURIComponent(termo);
+    if (ptOnly) url += "&langRestrict=pt";
     const r = await fetch(url);
     if (!r.ok) throw new Error("google " + r.status);
     const j = await r.json();
@@ -60,14 +62,56 @@ const APIs = (() => {
     }));
   }
 
+  // junta duas listas sem duplicar (por external_id ou título+autor)
+  function mesclar(a, b) {
+    const chave = (x) => (x.external_id || (x.title + "|" + x.authors)).toLowerCase();
+    const vistos = new Set(a.map(chave));
+    return a.concat(b.filter((x) => !vistos.has(chave(x))));
+  }
+
   async function buscarLivros(termo) {
     try {
-      const g = await googleBooks(termo);
-      if (g.length) return g;
-      return await openLibrary(termo);   // Google respondeu vazio → tenta reserva
+      // #6 PT-BR primeiro; completa com resultados gerais (PT no topo)
+      const pt = await googleBooks(termo, true).catch(() => []);
+      if (pt.length >= 5) return pt;
+      const geral = await googleBooks(termo, false).catch(() => []);
+      const merged = mesclar(pt, geral);
+      if (merged.length) return merged;
+      return await openLibrary(termo);   // reserva
     } catch {
-      return await openLibrary(termo);   // Google falhou (ex.: cota) → reserva
+      return await openLibrary(termo);   // reserva
     }
+  }
+
+  // #3 ISBN: detecção e busca exata por ISBN-10 / ISBN-13
+  function extrairISBN(termo) {
+    const limpo = (termo || "").replace(/[-\s]/g, "");
+    return /^(97[89]\d{10}|\d{9}[\dxX])$/.test(limpo) ? limpo : null;
+  }
+  async function buscarISBN(isbn) {
+    // 1) Google Books por isbn:
+    try {
+      const g = await googleBooks("isbn:" + isbn, false);
+      if (g.length) return g;
+    } catch {}
+    // 2) reserva: Open Library pelo endpoint de ISBN
+    try {
+      const r = await fetch(`https://openlibrary.org/isbn/${isbn}.json`);
+      if (r.ok) {
+        const d = await r.json();
+        return [{
+          title: d.title || "Sem título",
+          authors: "",
+          cover_url: d.covers && d.covers[0] ? `https://covers.openlibrary.org/b/id/${d.covers[0]}-M.jpg` : "",
+          synopsis: typeof d.description === "string" ? d.description : (d.description && d.description.value) || "",
+          genres: d.subjects || [],
+          total_pages: d.number_of_pages || null,
+          total_chapters: null, total_volumes: null,
+          source: "google_books", external_id: "",
+        }];
+      }
+    } catch {}
+    return [];
   }
 
   // ---------- Jikan / MyAnimeList ----------
@@ -165,8 +209,11 @@ const APIs = (() => {
     termo = (termo || "").trim();
     if (!termo) return [];
     if (kind === "manga") return buscarMangas(termo);
+    const isbn = extrairISBN(termo);           // #3 se for ISBN, busca exata
+    if (isbn) return buscarISBN(isbn);
     return buscarLivros(termo); // livro e quadrinho
   }
 
-  return { buscar, googleBooks, openLibrary, jikanManga, anilistManga, mangadexInfo, mangadexUltimoCapitulo };
+  return { buscar, googleBooks, openLibrary, jikanManga, anilistManga,
+           mangadexInfo, mangadexUltimoCapitulo, buscarISBN, extrairISBN };
 })();

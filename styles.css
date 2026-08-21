@@ -107,24 +107,21 @@ input { font-family: inherit; }
 
 /* ===== Toolbar (filtros) ===== */
 .toolbar {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
+  display: flex; align-items: center;
+  gap: 8px; flex-wrap: wrap; margin-bottom: 16px;
 }
-.chips { display: flex; gap: 7px; flex-wrap: wrap; }
-.chip {
-  background: var(--bg-card); color: var(--txt-suave);
-  border: 1px solid var(--linha); border-radius: 999px;
-  padding: 6px 12px; font-size: 13px; font-weight: 600;
-}
-.chip:hover { color: var(--txt); }
-.chip.is-active { background: var(--acento); color: #2a1c07; border-color: var(--acento); }
-
-.toolbar-right { display: flex; align-items: center; gap: 8px; }
 .input-busca {
+  flex: 1 1 160px; min-width: 140px;
   background: var(--bg-card); border: 1px solid var(--linha); color: var(--txt);
-  border-radius: 999px; padding: 8px 14px; font-size: 14px; width: 190px;
+  border-radius: 999px; padding: 8px 14px; font-size: 14px;
 }
 .input-busca:focus { outline: none; border-color: var(--acento); }
+.select-status {
+  background: var(--bg-card); border: 1px solid var(--linha); color: var(--txt);
+  border-radius: 999px; padding: 8px 14px; font-size: 14px; font-weight: 600;
+  cursor: pointer; flex: 0 0 auto;
+}
+.select-status:focus { outline: none; border-color: var(--acento); }
 .view-toggle { display: flex; background: var(--bg-card); border: 1px solid var(--linha); border-radius: 999px; overflow: hidden; }
 .vt { background: none; border: 0; color: var(--txt-fraco); width: 38px; height: 34px; font-size: 16px; }
 .vt.is-active { background: var(--bg-card-2); color: var(--acento); }
@@ -255,6 +252,18 @@ label.campo { display: block; margin: 12px 0 5px; font-size: 13px; color: var(--
 .sinopse { font-size: 13.5px; color: var(--txt-suave); line-height: 1.5; white-space: pre-wrap; }
 .ficha-rodape { display: flex; gap: 8px; margin-top: 22px; }
 .ficha-rodape .btn-perigo { margin-left: auto; }
+
+/* ===== Datas na ficha ===== */
+.datas-linha { display: flex; gap: 12px; flex-wrap: wrap; }
+.campo-inline { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--txt-suave); font-weight: 600; flex: 1 1 130px; }
+.input-data { color-scheme: dark; }
+
+/* ===== Modal mini (confirmação de conclusão) ===== */
+.modal-mini { max-width: 380px; text-align: center; }
+.conclusao-emoji { font-size: 44px; margin-bottom: 4px; }
+.conclusao-txt { color: var(--txt-suave); font-size: 14px; margin: 10px 0 4px; }
+.modal-mini .ficha-rodape { margin-top: 20px; }
+.modal-mini .ficha-rodape .btn-primary { margin-left: auto; }
 
 /* ===== Toast ===== */
 .toast {

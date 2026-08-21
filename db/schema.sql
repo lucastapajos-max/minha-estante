@@ -37,8 +37,22 @@ create table if not exists items (
   notify         boolean not null default false,   -- sino ligado?
   mangadex_id    text default '',                  -- id na MangaDex (pro robô consultar)
   last_notified_chapter int,                       -- último capítulo já avisado
+  -- datas de leitura + formato + coleção (features de UX)
+  started_at     date,
+  finished_at    date,
+  format         text,                             -- 'fisico' | 'digital' | null
+  collection_id  uuid,                             -- FK lógica p/ collections
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now()
+);
+
+-- COLLECTIONS — sagas/séries/pastas por autor
+create table if not exists collections (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references auth.users on delete cascade,
+  name       text not null,
+  kind       text,                                 -- 'saga' | 'autor' | null
+  created_at timestamptz not null default now()
 );
 
 -- 2) READING_SESSIONS — histórico "li tanto em tal dia" ---------
@@ -96,7 +110,7 @@ create table if not exists push_subscriptions (
 do $$
 declare t text;
 begin
-  foreach t in array array['items','reading_sessions','tags','item_tags','goals','push_subscriptions'] loop
+  foreach t in array array['items','reading_sessions','tags','item_tags','goals','push_subscriptions','collections'] loop
     execute format('alter table %I enable row level security;', t);
     execute format('drop policy if exists p_sel on %I;', t);
     execute format('drop policy if exists p_ins on %I;', t);
