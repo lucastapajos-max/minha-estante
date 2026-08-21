@@ -170,6 +170,79 @@
     return true;
   }
 
+  // ===== BIOMETRIA (#8 — WebAuthn: Windows Hello / digital Android) =====
+  let sessaoAtual = null;
+  const bufToB64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+  const b64ToBuf = (b64) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+
+  async function bioSuportado() {
+    if (!window.PublicKeyCredential) return false;
+    try { return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }
+    catch { return false; }
+  }
+
+  async function ativarBiometria() {
+    const u = (sessaoAtual && sessaoAtual.user) || { id: "estante-local", email: "" };
+    try {
+      const cred = await navigator.credentials.create({
+        publicKey: {
+          challenge: crypto.getRandomValues(new Uint8Array(32)),
+          rp: { name: "Estante" },
+          user: {
+            id: new TextEncoder().encode(u.id),
+            name: u.email || "usuario",
+            displayName: u.email || "Você",
+          },
+          pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+          authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+          timeout: 60000,
+        },
+      });
+      localStorage.setItem("bioCredId", bufToB64(cred.rawId));
+      localStorage.setItem("bioOn", "1");
+      atualizarBotaoBio();
+      toast("Bloqueio biométrico ativado ✓");
+    } catch {
+      toast("Não deu pra ativar a biometria agora.");
+    }
+  }
+
+  function desativarBiometria() {
+    localStorage.removeItem("bioOn");
+    localStorage.removeItem("bioCredId");
+    atualizarBotaoBio();
+    toast("Bloqueio biométrico desativado");
+  }
+
+  async function desbloquear() {
+    $("lock-erro").textContent = "";
+    const id = localStorage.getItem("bioCredId");
+    if (!id) { $("tela-lock").hidden = true; await mostrarApp(); return; }
+    try {
+      await navigator.credentials.get({
+        publicKey: {
+          challenge: crypto.getRandomValues(new Uint8Array(32)),
+          allowCredentials: [{ type: "public-key", id: b64ToBuf(id) }],
+          userVerification: "required",
+          timeout: 60000,
+        },
+      });
+      $("tela-lock").hidden = true;
+      await mostrarApp();
+    } catch {
+      $("lock-erro").textContent = "Não reconheci a biometria. Tente de novo.";
+    }
+  }
+
+  async function atualizarBotaoBio() {
+    const btn = $("btn-bio");
+    if (!(await bioSuportado())) { btn.hidden = true; return; }
+    btn.hidden = false;
+    const ligado = localStorage.getItem("bioOn") === "1";
+    btn.textContent = ligado ? "🔒" : "🔓";
+    btn.title = ligado ? "Bloqueio biométrico ativo (clique p/ desativar)" : "Ativar bloqueio biométrico";
+  }
+
   // capas da Open Library por ISBN devolvem imagem em BRANCO quando não existem;
   // ?default=false faz virar 404 → aí o onerror mostra o ícone de reserva.
   function capaURL(u) {
@@ -851,6 +924,22 @@
       await Store.signOut();
       location.reload();
     });
+
+    // #8 biometria
+    $("btn-bio").addEventListener("click", async () => {
+      if (localStorage.getItem("bioOn") === "1") {
+        if (confirm("Desativar o bloqueio biométrico?")) desativarBiometria();
+      } else {
+        await ativarBiometria();
+      }
+    });
+    $("btn-desbloquear").addEventListener("click", desbloquear);
+    $("btn-lock-sair").addEventListener("click", async () => {
+      await Store.signOut();
+      localStorage.removeItem("bioOn");
+      localStorage.removeItem("bioCredId");
+      location.reload();
+    });
   }
 
   // ============================================================
@@ -865,7 +954,7 @@
     const btn = $("btn-login");
     btn.disabled = true; btn.textContent = "Entrando…";
     try {
-      await Store.signIn(email, senha);
+      sessaoAtual = await Store.signIn(email, senha);
       $("tela-login").hidden = true;
       await mostrarApp();
     } catch (e) {
@@ -879,6 +968,7 @@
   async function mostrarApp() {
     $("btn-sair").hidden = !Store.cloud;   // botão sair só na nuvem
     $("app").hidden = false;
+    atualizarBotaoBio();                    // #8 mostra/atualiza o botão de biometria
     await renderBiblioteca();
   }
 
@@ -888,12 +978,17 @@
   async function boot() {
     ligarEventos();
 
-    // decide: tela de login (nuvem sem sessão) ou direto pra biblioteca
+    // decide: login (nuvem sem sessão) → tranca biométrica → biblioteca
     let sessao = null;
     try { sessao = await Store.session(); } catch { sessao = null; }
+    sessaoAtual = sessao;
     if (Store.cloud && !sessao) {
       $("tela-login").hidden = false;
       setTimeout(() => $("login-email").focus(), 100);
+    } else if (localStorage.getItem("bioOn") === "1") {
+      // #8 sessão existe, mas está trancada por biometria
+      $("tela-lock").hidden = false;
+      setTimeout(desbloquear, 300);           // dispara o Windows Hello / digital de cara
     } else {
       await mostrarApp();
     }

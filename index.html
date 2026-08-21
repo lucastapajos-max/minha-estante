@@ -27,6 +27,18 @@
     </div>
   </section>
 
+  <!-- ===== Tela de desbloqueio biométrico (#8) ===== -->
+  <section id="tela-lock" class="login-tela" hidden>
+    <div class="login-card">
+      <div class="login-logo">🔒</div>
+      <div class="login-titulo">Estante</div>
+      <div class="login-sub">Desbloqueie para ver sua estante</div>
+      <div class="login-erro" id="lock-erro"></div>
+      <button class="btn-primary login-btn" id="btn-desbloquear">🔓 Desbloquear</button>
+      <button class="link-btn" id="btn-lock-sair">Sair da conta</button>
+    </div>
+  </section>
+
   <main id="app" hidden>
     <!-- ===== Cabeçalho ===== -->
     <header class="topbar">
@@ -36,6 +48,7 @@
       </div>
       <div class="topbar-actions">
         <button class="btn-primary" id="btn-adicionar">+ Adicionar</button>
+        <button class="icon-btn" id="btn-bio" aria-label="Bloqueio biométrico" title="Bloqueio biométrico" hidden>🔓</button>
         <button class="icon-btn" id="btn-sair" aria-label="Sair" hidden>⎋</button>
       </div>
     </header>
