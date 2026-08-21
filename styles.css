@@ -122,6 +122,13 @@ input { font-family: inherit; }
   cursor: pointer; flex: 0 0 auto;
 }
 .select-status:focus { outline: none; border-color: var(--acento); }
+.btn-filtros { flex: 0 0 auto; padding: 8px 12px; font-size: 13px; }
+.btn-filtros.is-active { color: var(--acento); border-color: var(--acento); }
+
+/* painel de filtros avançados (#10) */
+.filtros-avancados { display: none; gap: 8px; flex-wrap: wrap; align-items: center; margin: -6px 0 16px; }
+.filtros-avancados:not([hidden]) { display: flex; }
+.filtros-avancados .select-status { font-weight: 500; }
 .view-toggle { display: flex; background: var(--bg-card); border: 1px solid var(--linha); border-radius: 999px; overflow: hidden; }
 .vt { background: none; border: 0; color: var(--txt-fraco); width: 38px; height: 34px; font-size: 16px; }
 .vt.is-active { background: var(--bg-card-2); color: var(--acento); }
@@ -158,6 +165,9 @@ input { font-family: inherit; }
 .card-prog { font-size: 12px; color: var(--txt-suave); margin-top: 5px; font-variant-numeric: tabular-nums; }
 .card-prog .prog-pctinline { color: var(--acento-2); font-weight: 600; }
 .card-rating { font-size: 12px; color: var(--acento-2); margin-top: 5px; }
+.card-baixo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 5px; }
+.card-baixo .card-rating { margin-top: 0; }
+.fmt-badge { font-size: 11px; font-weight: 600; color: var(--txt-suave); background: var(--bg-card-2); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
 
 /* ===== Biblioteca: lista ===== */
 .biblioteca.list { display: flex; flex-direction: column; gap: 8px; }

@@ -27,7 +27,8 @@
   const generosConhecidos = new Set();   // gêneros que já aparecem na estante
 
   // ---------- estado da tela ----------
-  const ui = { kind: "livro", status: "todos", view: "grid", filtro: "" };
+  const ui = { kind: "livro", status: "todos", view: "grid", filtro: "",
+    adv: { genero: "", formato: "", ano: "", autor: "" } };
 
   // ---------- atalhos ----------
   const $ = (id) => document.getElementById(id);
@@ -216,6 +217,23 @@
     return "";
   }
 
+  // popula os selects de filtro avançado (gênero, ano de leitura, autor)
+  function popularFiltrosAvancados(itens) {
+    const generos = [...new Set(itens.flatMap((i) => i.genres || []).filter(Boolean))].sort();
+    const anos = [...new Set(itens.map((i) => (i.finished_at || "").slice(0, 4)).filter(Boolean))].sort().reverse();
+    const autores = [...new Set(itens.map((i) => i.authors).filter(Boolean))].sort();
+    const pop = (id, valores, rotulo, atual) => {
+      const sel = $(id);
+      sel.innerHTML = `<option value="">${rotulo}</option>` +
+        valores.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+      sel.value = atual || "";
+    };
+    pop("fa-genero", generos, "Gênero: todos", ui.adv.genero);
+    pop("fa-ano", anos, "Ano de leitura: todos", ui.adv.ano);
+    pop("fa-autor", autores, "Autor: todos", ui.adv.autor);
+    $("fa-formato").value = ui.adv.formato || "";
+  }
+
   // ============================================================
   //  RENDER DA BIBLIOTECA
   // ============================================================
@@ -226,12 +244,20 @@
     // alimenta o banco de gêneros conhecidos (pras sugestões do editor)
     itens.forEach((i) => (i.genres || []).forEach((g) => g && generosConhecidos.add(g)));
 
+    // popula os selects dos filtros avançados a partir da lista completa (antes de filtrar)
+    popularFiltrosAvancados(itens);
+
     if (ui.status !== "todos") itens = itens.filter((i) => i.status === ui.status);
     if (ui.filtro) {
       const f = ui.filtro.toLowerCase();
       itens = itens.filter((i) =>
         i.title.toLowerCase().includes(f) || (i.authors || "").toLowerCase().includes(f));
     }
+    // #10 filtros avançados
+    if (ui.adv.genero) itens = itens.filter((i) => (i.genres || []).includes(ui.adv.genero));
+    if (ui.adv.formato) itens = itens.filter((i) => i.format === ui.adv.formato);
+    if (ui.adv.ano) itens = itens.filter((i) => (i.finished_at || "").slice(0, 4) === ui.adv.ano);
+    if (ui.adv.autor) itens = itens.filter((i) => (i.authors || "") === ui.adv.autor);
 
     wrap.className = "biblioteca " + ui.view;
     $("vazio").hidden = itens.length > 0;
@@ -244,6 +270,8 @@
       const pctTxt = temTotal(i) ? `<span class="prog-pctinline">${pct}%</span>` : "";
       const progHTML = progTxt
         ? `<div class="card-prog">${progTxt}${pctTxt ? " · " + pctTxt : ""}</div>` : "";
+      const fmtBadge = i.format
+        ? `<span class="fmt-badge">${i.format === "fisico" ? "📖 Físico" : "💾 Digital"}</span>` : "";
 
       if (ui.view === "list") {
         return `<div class="card" data-id="${i.id}">
@@ -254,6 +282,7 @@
             <div class="list-meta">
               <span class="list-badge" style="background:${st.cor}">${st.label}</span>
               ${progTxt ? `<span class="list-prog">${progTxt}${pctTxt ? " · " + pctTxt : ""}</span>` : ""}
+              ${fmtBadge}
               ${estrelas ? `<span class="card-rating">${estrelas}</span>` : ""}
             </div>
           </div>
@@ -269,7 +298,7 @@
           <div class="card-titulo">${esc(i.title)}</div>
           <div class="card-autor">${esc(i.authors) || "—"}</div>
           ${progHTML}
-          ${estrelas ? `<div class="card-rating">${estrelas}</div>` : ""}
+          <div class="card-baixo">${fmtBadge}${estrelas ? `<span class="card-rating">${estrelas}</span>` : ""}</div>
         </div>
       </div>`;
     }).join("");
@@ -388,6 +417,12 @@
         ${Object.entries(STATUS).map(([sk, v]) => `<option value="${sk}" ${ed && ed.status === sk ? "selected" : ""}>${v.label}</option>`).join("")}
       </select>
       ${progFields}
+      <label class="campo">Formato</label>
+      <select class="input" id="m-format">
+        <option value="" ${ed && !ed.format ? "selected" : ""}>— Não definido</option>
+        <option value="fisico" ${ed && ed.format === "fisico" ? "selected" : ""}>📖 Físico</option>
+        <option value="digital" ${ed && ed.format === "digital" ? "selected" : ""}>💾 Digital</option>
+      </select>
       <label class="campo">Categorias / Gêneros</label>
       <div class="tags-box" id="m-genres-box"></div>
       <input class="input" id="m-genres-input" placeholder="Digite um gênero e Enter…" autocomplete="off">
@@ -438,6 +473,7 @@
         cover_url: $("m-cover").value.trim(),
         synopsis: $("m-syn").value.trim(),
         genres: generos,
+        format: $("m-format").value || null,
         total_pages: k === "livro" ? (parseInt($("m-pages").value) || null) : null,
         total_chapters: k !== "livro" ? (parseInt($("m-chaps").value) || null) : null,
         total_volumes: k !== "livro" ? (parseInt($("m-vols").value) || null) : null,
@@ -549,6 +585,15 @@
       </div>
 
       <div class="ficha-secao">
+        <h4>Formato</h4>
+        <div class="status-select" id="f-formato">
+          <button class="status-op ${it.format === "fisico" ? "is-active" : ""}" data-fmt="fisico" style="${it.format === "fisico" ? "background:var(--acento);border-color:var(--acento);color:#14110c" : ""}">📖 Físico</button>
+          <button class="status-op ${it.format === "digital" ? "is-active" : ""}" data-fmt="digital" style="${it.format === "digital" ? "background:var(--acento);border-color:var(--acento);color:#14110c" : ""}">💾 Digital</button>
+          <button class="status-op ${!it.format ? "is-active" : ""}" data-fmt="">— Não definido</button>
+        </div>
+      </div>
+
+      <div class="ficha-secao">
         <h4>Avaliação</h4>
         <div class="estrelas" id="f-estrelas">
           ${[1,2,3,4,5].map((n) => `<span class="estrela ${it.rating >= n ? "on" : ""}" data-n="${n}">★</span>`).join("")}
@@ -580,6 +625,14 @@
         // marcar "Lido" registra a data de conclusão (se ainda não houver)
         if (novoStatus === "lido" && !it.finished_at) patch.finished_at = hojeISO();
         await Store.update(id, patch);
+        abrirFicha(id); renderBiblioteca();
+      }));
+
+    // --- formato (físico/digital) ---
+    corpo.querySelectorAll("#f-formato .status-op").forEach((b) =>
+      b.addEventListener("click", async () => {
+        await Store.update(id, { format: b.dataset.fmt || null });
+        it.format = b.dataset.fmt || null;
         abrirFicha(id); renderBiblioteca();
       }));
 
@@ -711,6 +764,20 @@
     // filtro local
     $("busca-local").addEventListener("input", (e) => {
       ui.filtro = e.target.value.trim();
+      renderBiblioteca();
+    });
+
+    // #10 filtros avançados
+    $("btn-filtros").addEventListener("click", () => {
+      const p = $("filtros-avancados");
+      p.hidden = !p.hidden;
+      $("btn-filtros").classList.toggle("is-active", !p.hidden);
+    });
+    const mapAdv = { "fa-genero": "genero", "fa-formato": "formato", "fa-ano": "ano", "fa-autor": "autor" };
+    Object.keys(mapAdv).forEach((fid) =>
+      $(fid).addEventListener("change", (e) => { ui.adv[mapAdv[fid]] = e.target.value; renderBiblioteca(); }));
+    $("fa-limpar").addEventListener("click", () => {
+      ui.adv = { genero: "", formato: "", ano: "", autor: "" };
       renderBiblioteca();
     });
 

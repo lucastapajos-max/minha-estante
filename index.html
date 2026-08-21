@@ -63,6 +63,20 @@
         <button class="vt is-active" data-view="grid" aria-label="Grade">▦</button>
         <button class="vt" data-view="list" aria-label="Lista">≣</button>
       </div>
+      <button class="btn-ghost btn-filtros" id="btn-filtros" aria-label="Filtros avançados">⚙ Filtros</button>
+    </div>
+
+    <!-- #10 filtros avançados -->
+    <div class="filtros-avancados" id="filtros-avancados" hidden>
+      <select id="fa-genero" class="select-status"></select>
+      <select id="fa-formato" class="select-status">
+        <option value="">Formato: todos</option>
+        <option value="fisico">📖 Físico</option>
+        <option value="digital">💾 Digital</option>
+      </select>
+      <select id="fa-ano" class="select-status"></select>
+      <select id="fa-autor" class="select-status"></select>
+      <button class="link-btn" id="fa-limpar">Limpar filtros</button>
     </div>
 
     <!-- ===== Biblioteca ===== -->
