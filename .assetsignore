@@ -1,0 +1,8 @@
+# Arquivos que NÃO devem ir pro site (só ficam no repo)
+.git
+.gitignore
+.assetsignore
+wrangler.toml
+*.md
+config.example.js
+db

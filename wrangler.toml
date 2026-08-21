@@ -1,0 +1,10 @@
+# Config do Cloudflare Workers — serve a Estante como site estático.
+# O deploy do Cloudflare roda "npx wrangler deploy", que lê este arquivo
+# e publica os arquivos da pasta como assets (não precisa de build nem de Node local).
+name = "minha-estante"
+compatibility_date = "2025-01-01"
+
+[assets]
+directory = "./"
+# app de página única: qualquer rota desconhecida cai no index.html
+not_found_handling = "single-page-application"
