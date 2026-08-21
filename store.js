@@ -68,6 +68,7 @@ const Store = (() => {
       try { cache = JSON.parse(localStorage.getItem(CHAVE)) || { items: [], sessions: [] }; }
       catch { cache = { items: [], sessions: [] }; }
       cache.items = cache.items || []; cache.sessions = cache.sessions || [];
+      cache.collections = cache.collections || [];
       return cache;
     }
     const _salvar = () => localStorage.setItem(CHAVE, JSON.stringify(cache));
@@ -105,6 +106,20 @@ const Store = (() => {
       },
       async sessionsOf(itemId) {
         return _ler().sessions.filter((s) => s.item_id === itemId).sort((a, b) => b.date.localeCompare(a.date));
+      },
+      async listCollections() {
+        return _ler().collections.slice().sort((a, b) => a.name.localeCompare(b.name));
+      },
+      async addCollection(name, kind) {
+        const db = _ler();
+        const c = { id: _uid(), name, kind: kind || null, created_at: _agora() };
+        db.collections.push(c); _salvar(); return c;
+      },
+      async removeCollection(id) {
+        const db = _ler();
+        db.collections = db.collections.filter((c) => c.id !== id);
+        db.items.forEach((i) => { if (i.collection_id === id) i.collection_id = null; });
+        _salvar(); return true;
       },
     };
   })();
@@ -180,6 +195,25 @@ const Store = (() => {
         return data || [];
       },
 
+      // ---- coleções (Onda C) ----
+      async listCollections() {
+        const { data, error } = await sb.from("collections").select("*").order("name");
+        if (error) throw error;
+        return data || [];
+      },
+      async addCollection(name, kind) {
+        const row = { name, kind: kind || null, user_id: await uid() };
+        const { data, error } = await sb.from("collections").insert(row).select().single();
+        if (error) throw error;
+        return data;
+      },
+      async removeCollection(id) {
+        await sb.from("items").update({ collection_id: null }).eq("collection_id", id);
+        const { error } = await sb.from("collections").delete().eq("id", id);
+        if (error) throw error;
+        return true;
+      },
+
       // ---- push (Fase 3) ----
       async salvarInscricaoPush(sub) {
         const j = sub.toJSON();
@@ -225,6 +259,10 @@ const Store = (() => {
     remove: (id) => backend.remove(id),
     addSession: (id, s) => backend.addSession(id, s),
     sessionsOf: (id) => backend.sessionsOf(id),
+    // coleções
+    listCollections: () => backend.listCollections(),
+    addCollection: (name, kind) => backend.addCollection(name, kind),
+    removeCollection: (id) => backend.removeCollection(id),
     stats,
     // push
     salvarInscricaoPush: (sub) => backend.salvarInscricaoPush && backend.salvarInscricaoPush(sub),

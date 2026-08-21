@@ -25,10 +25,11 @@
     manga: ["Shounen", "Shoujo", "Seinen", "Josei", "Ação", "Aventura", "Comédia", "Romance", "Terror", "Slice of Life", "Fantasia", "Ficção científica", "Esporte", "Sobrenatural", "Mistério", "Drama"],
   };
   const generosConhecidos = new Set();   // gêneros que já aparecem na estante
+  let colecoesCache = [];                 // coleções (id → nome) pro render e filtros
 
   // ---------- estado da tela ----------
   const ui = { kind: "livro", status: "todos", view: "grid", filtro: "",
-    adv: { genero: "", formato: "", ano: "", autor: "" } };
+    adv: { genero: "", formato: "", ano: "", autor: "", colecao: "" } };
 
   // ---------- atalhos ----------
   const $ = (id) => document.getElementById(id);
@@ -234,6 +235,11 @@
     pop("fa-ano", anos, "Ano de leitura: todos", ui.adv.ano);
     pop("fa-autor", autores, "Autor: todos", ui.adv.autor);
     $("fa-formato").value = ui.adv.formato || "";
+    // coleções: usa id como value e nome como rótulo
+    const selC = $("fa-colecao");
+    selC.innerHTML = `<option value="">Coleção: todas</option>` +
+      colecoesCache.map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");
+    selC.value = ui.adv.colecao || "";
   }
 
   // ============================================================
@@ -245,6 +251,10 @@
 
     // alimenta o banco de gêneros conhecidos (pras sugestões do editor)
     itens.forEach((i) => (i.genres || []).forEach((g) => g && generosConhecidos.add(g)));
+
+    // coleções (pro badge e filtro)
+    try { colecoesCache = await Store.listCollections(); } catch { colecoesCache = []; }
+    const nomeColecao = (cid) => { const c = colecoesCache.find((x) => x.id === cid); return c ? c.name : ""; };
 
     // popula os selects dos filtros avançados a partir da lista completa (antes de filtrar)
     popularFiltrosAvancados(itens);
@@ -261,6 +271,7 @@
     if (ui.adv.ano) itens = itens.filter((i) =>
       (i.started_at || "").slice(0, 4) === ui.adv.ano || (i.finished_at || "").slice(0, 4) === ui.adv.ano);
     if (ui.adv.autor) itens = itens.filter((i) => (i.authors || "") === ui.adv.autor);
+    if (ui.adv.colecao) itens = itens.filter((i) => i.collection_id === ui.adv.colecao);
 
     wrap.className = "biblioteca " + ui.view;
     $("vazio").hidden = itens.length > 0;
@@ -275,6 +286,8 @@
         ? `<div class="card-prog">${progTxt}${pctTxt ? " · " + pctTxt : ""}</div>` : "";
       const fmtBadge = i.format
         ? `<span class="fmt-badge">${i.format === "fisico" ? "📖 Físico" : "💾 Digital"}</span>` : "";
+      const colNome = i.collection_id ? nomeColecao(i.collection_id) : "";
+      const colBadge = colNome ? `<span class="col-badge">📚 ${esc(colNome)}</span>` : "";
 
       if (ui.view === "list") {
         return `<div class="card" data-id="${i.id}">
@@ -286,6 +299,7 @@
               <span class="list-badge" style="background:${st.cor}">${st.label}</span>
               ${progTxt ? `<span class="list-prog">${progTxt}${pctTxt ? " · " + pctTxt : ""}</span>` : ""}
               ${fmtBadge}
+              ${colBadge}
               ${estrelas ? `<span class="card-rating">${estrelas}</span>` : ""}
             </div>
           </div>
@@ -301,7 +315,7 @@
           <div class="card-titulo">${esc(i.title)}</div>
           <div class="card-autor">${esc(i.authors) || "—"}</div>
           ${progHTML}
-          <div class="card-baixo">${fmtBadge}${estrelas ? `<span class="card-rating">${estrelas}</span>` : ""}</div>
+          <div class="card-baixo">${fmtBadge}${colBadge}${estrelas ? `<span class="card-rating">${estrelas}</span>` : ""}</div>
         </div>
       </div>`;
     }).join("");
@@ -503,6 +517,7 @@
     if (!it) return;
     fecharModais();
     const corpo = $("ficha-corpo");
+    const colecoes = await Store.listCollections().catch(() => []);
 
     const statusOps = Object.entries(STATUS).map(([k, v]) =>
       `<button class="status-op ${it.status === k ? "is-active" : ""}"
@@ -597,6 +612,17 @@
       </div>
 
       <div class="ficha-secao">
+        <h4>Coleção / Saga</h4>
+        <div class="colecao-linha">
+          <select class="input" id="f-colecao">
+            <option value="">— Nenhuma</option>
+            ${colecoes.map((c) => `<option value="${esc(c.id)}" ${it.collection_id === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}
+          </select>
+          <button class="btn-ghost" id="f-nova-colecao" type="button">＋ Nova</button>
+        </div>
+      </div>
+
+      <div class="ficha-secao">
         <h4>Avaliação</h4>
         <div class="estrelas" id="f-estrelas">
           ${[1,2,3,4,5].map((n) => `<span class="estrela ${it.rating >= n ? "on" : ""}" data-n="${n}">★</span>`).join("")}
@@ -638,6 +664,21 @@
         it.format = b.dataset.fmt || null;
         abrirFicha(id); renderBiblioteca();
       }));
+
+    // --- coleção (Onda C) ---
+    $("f-colecao").addEventListener("change", async (e) => {
+      await Store.update(id, { collection_id: e.target.value || null });
+      it.collection_id = e.target.value || null;
+      renderBiblioteca();
+    });
+    $("f-nova-colecao").addEventListener("click", async () => {
+      const nome = prompt("Nome da coleção / saga (ex.: Trilogia Mistborn):");
+      if (!nome || !nome.trim()) return;
+      const c = await Store.addCollection(nome.trim());
+      await Store.update(id, { collection_id: c.id });
+      it.collection_id = c.id;
+      abrirFicha(id); renderBiblioteca();
+    });
 
     // --- progresso (salva ao editar) ---
     async function salvarProg() {
@@ -776,11 +817,11 @@
       p.hidden = !p.hidden;
       $("btn-filtros").classList.toggle("is-active", !p.hidden);
     });
-    const mapAdv = { "fa-genero": "genero", "fa-formato": "formato", "fa-ano": "ano", "fa-autor": "autor" };
+    const mapAdv = { "fa-genero": "genero", "fa-formato": "formato", "fa-ano": "ano", "fa-autor": "autor", "fa-colecao": "colecao" };
     Object.keys(mapAdv).forEach((fid) =>
       $(fid).addEventListener("change", (e) => { ui.adv[mapAdv[fid]] = e.target.value; renderBiblioteca(); }));
     $("fa-limpar").addEventListener("click", () => {
-      ui.adv = { genero: "", formato: "", ano: "", autor: "" };
+      ui.adv = { genero: "", formato: "", ano: "", autor: "", colecao: "" };
       renderBiblioteca();
     });
 
