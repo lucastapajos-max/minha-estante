@@ -285,6 +285,9 @@ label.campo { display: block; margin: 12px 0 5px; font-size: 13px; color: var(--
 .tag-sug { background: var(--bg); color: var(--txt-suave); border: 1px solid var(--linha); border-radius: 999px; padding: 4px 11px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
 .tag-sug:hover { color: var(--txt); border-color: var(--acento); }
 .add-manual-linha { text-align: center; margin-top: 14px; }
+.add-sep { color: var(--txt-fraco); margin: 0 6px; }
+#import-texto { width: 100%; font-family: ui-monospace, monospace; font-size: 12.5px; margin-top: 8px; }
+.add-hint code { background: var(--bg-card-2); padding: 1px 5px; border-radius: 5px; font-size: 12px; }
 .spinner { text-align: center; color: var(--txt-fraco); padding: 16px; font-size: 14px; }
 
 /* ===== Ficha ===== */

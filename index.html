@@ -163,7 +163,30 @@
 
       <div class="add-manual-linha">
         <button class="link-btn" id="btn-manual">ou cadastrar manualmente</button>
+        <span class="add-sep">·</span>
+        <button class="link-btn" id="btn-import">importar lista</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ================= Modal: Importar lista (Skoob) ================= -->
+  <div class="modal-bg" id="modal-import" hidden>
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-titulo">Importar lista de livros</div>
+        <button class="icon-btn" id="import-fechar" aria-label="Fechar">✕</button>
+      </div>
+      <div class="add-hint">
+        Uma linha por livro, campos separados por <b>|</b> (barra vertical):<br>
+        <code>ISBN | Título | Autor | páginas | nota | início | fim</code><br>
+        Datas em AAAA-MM-DD. Todos entram como <b>Lido</b>. Livros já na estante são pulados.
+      </div>
+      <textarea class="input" id="import-texto" rows="8" placeholder="9788573028423 | A Bússola de Ouro | Philip Pullman | 365 | 3.5 | 2026-02-02 | 2026-03-09"></textarea>
+      <div class="ficha-rodape">
+        <button class="btn-ghost" id="import-cancel">Cancelar</button>
+        <button class="btn-primary" id="import-run">Importar</button>
+      </div>
+      <div class="add-hint" id="import-status"></div>
     </div>
   </div>
 

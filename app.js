@@ -99,7 +99,7 @@
   // fecha TODOS os modais — usado antes de abrir qualquer um
   // (garante que nunca fiquem empilhados/travados)
   function fecharModais() {
-    ["modal-add", "modal-manual", "modal-ficha", "modal-rapido", "modal-sessao"].forEach((id) => {
+    ["modal-add", "modal-manual", "modal-ficha", "modal-rapido", "modal-sessao", "modal-import"].forEach((id) => {
       const m = $(id); if (m) m.hidden = true;
     });
   }
@@ -779,6 +779,63 @@
   }
 
   // ============================================================
+  //  IMPORTAR LISTA (ex.: Skoob)
+  // ============================================================
+  function abrirImport() {
+    fecharModais();
+    $("import-status").textContent = "";
+    $("modal-import").hidden = false;
+  }
+
+  // busca a capa (e gêneros) por ISBN; se não achar, tenta por título+autor
+  async function capaPorLivro(isbn, titulo, autor) {
+    const limpo = (isbn || "").replace(/[^0-9Xx]/g, "");
+    if (limpo.length === 10 || limpo.length === 13) {
+      try { const r = await APIs.buscarISBN(limpo); if (r[0] && r[0].cover_url) return r[0]; } catch {}
+    }
+    try { const r = await APIs.buscar("livro", `${titulo} ${autor || ""}`.trim()); if (r[0]) return r[0]; } catch {}
+    return null;
+  }
+
+  async function importarLista() {
+    const linhas = $("import-texto").value.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (!linhas.length) { toast("Cole a lista primeiro"); return; }
+    const btn = $("import-run"); btn.disabled = true;
+    const st = $("import-status");
+    const existentes = new Set((await Store.list()).map((i) => (i.title || "").toLowerCase().trim()));
+    let add = 0, pulados = 0;
+    for (let n = 0; n < linhas.length; n++) {
+      const p = linhas[n].split("|").map((x) => x.trim());
+      const [isbn, titulo, autor, pgs, nota, inicio, fim] = p;
+      if (!titulo) continue;
+      st.textContent = `Processando ${n + 1}/${linhas.length}: ${titulo}…`;
+      if (existentes.has(titulo.toLowerCase().trim())) { pulados++; continue; }
+      const info = await capaPorLivro(isbn, titulo, autor);
+      const totalPg = parseInt(pgs) || (info && info.total_pages) || null;
+      await Store.add({
+        kind: "livro", status: "lido",
+        title: titulo,
+        authors: autor || (info && info.authors) || "",
+        cover_url: (info && info.cover_url) || "",
+        genres: (info && info.genres) || [],
+        total_pages: totalPg,
+        current_page: totalPg || 0,
+        rating: nota ? parseFloat(String(nota).replace(",", ".")) : null,
+        started_at: inicio || null,
+        finished_at: fim || inicio || null,
+        source: "manual",
+      });
+      existentes.add(titulo.toLowerCase().trim());
+      add++;
+      await new Promise((r) => setTimeout(r, 250));   // gentil com as APIs
+    }
+    btn.disabled = false;
+    st.textContent = `Pronto! ${add} adicionado(s), ${pulados} já existia(m).`;
+    toast(`Importados: ${add} livro(s) ✓`);
+    renderBiblioteca();
+  }
+
+  // ============================================================
   //  MODAL CADASTRO MANUAL
   // ============================================================
   // usado como CADASTRO (existente = null) e como EDIÇÃO (existente = item)
@@ -1212,6 +1269,10 @@
     $("add-buscar").addEventListener("click", fazerBusca);
     $("add-input").addEventListener("keydown", (e) => { if (e.key === "Enter") fazerBusca(); });
     $("btn-manual").addEventListener("click", () => abrirManual());
+    $("btn-import").addEventListener("click", abrirImport);
+    $("import-fechar").addEventListener("click", () => ($("modal-import").hidden = true));
+    $("import-cancel").addEventListener("click", () => ($("modal-import").hidden = true));
+    $("import-run").addEventListener("click", importarLista);
     $("manual-fechar").addEventListener("click", () => ($("modal-manual").hidden = true));
     $("ficha-fechar").addEventListener("click", () => ($("modal-ficha").hidden = true));
     $("rapido-fechar").addEventListener("click", () => ($("modal-rapido").hidden = true));
