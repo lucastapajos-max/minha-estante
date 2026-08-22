@@ -28,8 +28,23 @@
   let colecoesCache = [];                 // coleções (id → nome) pro render e filtros
 
   // ---------- estado da tela ----------
-  const ui = { kind: "livro", status: "lendo", view: "grid", filtro: "",
+  const ui = { kind: "livro", status: "lendo", view: "grid", filtro: "", ordem: "recentes",
     adv: { genero: "", formato: "", ano: "", autor: "", colecao: "" } };
+
+  // ordenadores da biblioteca (livros sem data de conclusão vão sempre por último)
+  const porConclusao = (asc) => (a, b) => {
+    if (!a.finished_at && !b.finished_at) return 0;
+    if (!a.finished_at) return 1;
+    if (!b.finished_at) return -1;
+    return asc ? a.finished_at.localeCompare(b.finished_at) : b.finished_at.localeCompare(a.finished_at);
+  };
+  const ORDENADORES = {
+    recentes: (a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""),
+    az: (a, b) => a.title.localeCompare(b.title, "pt", { sensitivity: "base" }),
+    za: (a, b) => b.title.localeCompare(a.title, "pt", { sensitivity: "base" }),
+    conclusao_desc: porConclusao(false),
+    conclusao_asc: porConclusao(true),
+  };
 
   // ---------- ícones flat (SVG inline, monocromáticos, herdam a cor) ----------
   const ICON_PATHS = {
@@ -648,6 +663,9 @@
     if (ui.adv.autor) itens = itens.filter((i) => (i.authors || "") === ui.adv.autor);
     if (ui.adv.colecao) itens = itens.filter((i) => i.collection_id === ui.adv.colecao);
 
+    // ordenação
+    itens.sort(ORDENADORES[ui.ordem] || ORDENADORES.recentes);
+
     wrap.className = "biblioteca " + ui.view;
     $("vazio").hidden = itens.length > 0;
 
@@ -1234,6 +1252,12 @@
     // filtro de status (dropdown #4)
     $("filtro-status").addEventListener("change", (e) => {
       ui.status = e.target.value;
+      renderBiblioteca();
+    });
+
+    // ordenação
+    $("ordenar").addEventListener("change", (e) => {
+      ui.ordem = e.target.value;
       renderBiblioteca();
     });
 
