@@ -13,9 +13,9 @@
     abandonado: { label: "Abandonado", cor: "var(--st-abandonado)" },
   };
   const KIND = {
-    livro:     { label: "Livro",     emoji: "📖", unidade: "páginas" },
-    quadrinho: { label: "Quadrinho", emoji: "💥", unidade: "páginas" },
-    manga:     { label: "Mangá",     emoji: "🎌", unidade: "capítulos" },
+    livro:     { label: "Livro",     unidade: "páginas" },
+    quadrinho: { label: "Quadrinho", unidade: "páginas" },
+    manga:     { label: "Mangá",     unidade: "capítulos" },
   };
 
   // gêneros comuns por categoria (sugestões clicáveis)
@@ -101,8 +101,11 @@
     const d = new Date(); const p = (n) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
   };
-  const esc = (s) => (s || "").replace(/[&<>"']/g, (c) =>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  // nota sempre 0..5 (evita repeat() negativo e dados fora da faixa)
+  const clampNota = (n) => { n = Number(n); return Number.isFinite(n) ? Math.max(0, Math.min(5, n)) : null; };
 
   function toast(msg) {
     const t = $("toast");
@@ -672,7 +675,8 @@
     wrap.innerHTML = itens.map((i) => {
       const st = STATUS[i.status];
       const pct = Math.round(progresso(i) * 100);
-      const estrelas = i.rating ? "★".repeat(Math.round(i.rating)) + "☆".repeat(5 - Math.round(i.rating)) : "";
+      const cheias = Math.round(clampNota(i.rating) || 0);
+      const estrelas = cheias ? "★".repeat(cheias) + "☆".repeat(5 - cheias) : "";
       const progTxt = progressoTexto(i);
       const pctTxt = temTotal(i) ? `<span class="prog-pctinline">${pct}%</span>` : "";
       const progHTML = progTxt
@@ -823,37 +827,47 @@
     if (!linhas.length) { toast("Cole a lista primeiro"); return; }
     const btn = $("import-run"); btn.disabled = true;
     const st = $("import-status");
-    const existentes = new Set((await Store.list()).map((i) => (i.title || "").toLowerCase().trim()));
-    let add = 0, pulados = 0;
-    for (let n = 0; n < linhas.length; n++) {
-      const p = linhas[n].split("|").map((x) => x.trim());
-      const [isbn, titulo, autor, pgs, nota, inicio, fim] = p;
-      if (!titulo) continue;
-      st.textContent = `Processando ${n + 1}/${linhas.length}: ${titulo}…`;
-      if (existentes.has(titulo.toLowerCase().trim())) { pulados++; continue; }
-      const info = await capaPorLivro(isbn, titulo, autor);
-      const totalPg = parseInt(pgs) || (info && info.total_pages) || null;
-      await Store.add({
-        kind: "livro", status: "lido",
-        title: titulo,
-        authors: autor || (info && info.authors) || "",
-        cover_url: (info && info.cover_url) || "",
-        genres: (info && info.genres) || [],
-        total_pages: totalPg,
-        current_page: totalPg || 0,
-        rating: nota ? parseFloat(String(nota).replace(",", ".")) : null,
-        started_at: inicio || null,
-        finished_at: fim || inicio || null,
-        source: "manual",
-      });
-      existentes.add(titulo.toLowerCase().trim());
-      add++;
-      await new Promise((r) => setTimeout(r, 250));   // gentil com as APIs
+    let add = 0, pulados = 0, erros = 0;
+    try {
+      const existentes = new Set((await Store.list()).map((i) => (i.title || "").toLowerCase().trim()));
+      for (let n = 0; n < linhas.length; n++) {
+        const p = linhas[n].split("|").map((x) => x.trim());
+        const [isbn, titulo, autor, pgs, nota, inicio, fim] = p;
+        if (!titulo) continue;
+        st.textContent = `Processando ${n + 1}/${linhas.length}: ${titulo}…`;
+        if (existentes.has(titulo.toLowerCase().trim())) { pulados++; continue; }
+        try {
+          const info = await capaPorLivro(isbn, titulo, autor);
+          const totalPg = parseInt(pgs) || (info && info.total_pages) || null;
+          await Store.add({
+            kind: "livro", status: "lido",
+            title: titulo,
+            authors: autor || (info && info.authors) || "",
+            cover_url: (info && info.cover_url) || "",
+            genres: (info && info.genres) || [],
+            total_pages: totalPg,
+            current_page: totalPg || 0,
+            rating: clampNota(nota ? parseFloat(String(nota).replace(",", ".")) : null),
+            started_at: inicio || null,
+            finished_at: fim || inicio || null,
+            source: "manual",
+          });
+          existentes.add(titulo.toLowerCase().trim());
+          add++;
+        } catch (e) {
+          erros++;
+          console.warn("Import falhou em:", titulo, e);
+        }
+        await new Promise((r) => setTimeout(r, 250));   // gentil com as APIs
+      }
+      st.textContent = `Pronto! ${add} adicionado(s), ${pulados} já existia(m)${erros ? `, ${erros} com erro` : ""}.`;
+      toast(`Importados: ${add} livro(s) ✓`);
+    } catch (e) {
+      st.textContent = "Erro ao importar. Verifique a conexão e tente de novo.";
+    } finally {
+      btn.disabled = false;
+      renderBiblioteca();
     }
-    btn.disabled = false;
-    st.textContent = `Pronto! ${add} adicionado(s), ${pulados} já existia(m).`;
-    toast(`Importados: ${add} livro(s) ✓`);
-    renderBiblioteca();
   }
 
   // ============================================================
@@ -1322,8 +1336,8 @@
     $("btn-login").addEventListener("click", fazerLogin);
     $("login-senha").addEventListener("keydown", (e) => { if (e.key === "Enter") fazerLogin(); });
     $("btn-sair").addEventListener("click", async () => {
-      await Store.signOut();
-      location.reload();
+      try { await Store.signOut(); } catch {}
+      recarregar();
     });
 
     // tema claro/escuro
@@ -1339,10 +1353,10 @@
     });
     $("btn-desbloquear").addEventListener("click", desbloquear);
     $("btn-lock-sair").addEventListener("click", async () => {
-      await Store.signOut();
+      try { await Store.signOut(); } catch {}
       localStorage.removeItem("bioOn");
       localStorage.removeItem("bioCredId");
-      location.reload();
+      recarregar();
     });
   }
 
@@ -1382,10 +1396,27 @@
   // ============================================================
   //  BOOT
   // ============================================================
+  let jaRecarregando = false;
+  function recarregar() { if (jaRecarregando) return; jaRecarregando = true; location.reload(); }
+
   async function boot() {
     pintarIcones();          // ícones flat estáticos
     atualizarBotaoTema();    // ícone sol/lua conforme o tema salvo
     ligarEventos();
+
+    // rede de segurança: qualquer falha assíncrona não tratada vira um aviso
+    // (ex.: escrita na nuvem que falhou por conexão) em vez de sumir em silêncio
+    window.addEventListener("unhandledrejection", (e) => {
+      console.warn("Falha não tratada:", e && e.reason);
+      toast("Algo não salvou. Verifique a conexão e tente de novo.");
+    });
+
+    // sessão expirou/caiu enquanto usava → volta pro login
+    if (Store.cloud) {
+      Store.onAuthChange((s) => {
+        if (!s && !$("app").hidden) recarregar();
+      });
+    }
 
     // decide: login (nuvem sem sessão) → tranca biométrica → biblioteca
     let sessao = null;

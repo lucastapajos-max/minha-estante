@@ -18,12 +18,20 @@ const APIs = (() => {
 
   const limpaHTML = (s) => (s || "").replace(/<[^>]*>/g, "").replace(/\s+\n/g, "\n").trim();
 
+  // fetch com timeout (aborta se a API demorar demais — não trava a importação)
+  async function fetchT(url, opts = {}, ms = 12000) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), ms);
+    try { return await fetch(url, { ...opts, signal: ctrl.signal }); }
+    finally { clearTimeout(t); }
+  }
+
   // ---------- Google Books ----------
   // ptOnly=true restringe a edições em português (langRestrict=pt)
   async function googleBooks(termo, ptOnly) {
     let url = "https://www.googleapis.com/books/v1/volumes?maxResults=12&country=BR&q=" + encodeURIComponent(termo);
     if (ptOnly) url += "&langRestrict=pt";
-    const r = await fetch(url);
+    const r = await fetchT(url);
     if (!r.ok) throw new Error("google " + r.status);
     const j = await r.json();
     return (j.items || []).map((v) => {
@@ -49,7 +57,7 @@ const APIs = (() => {
   async function openLibrary(termo) {
     const url = "https://openlibrary.org/search.json?limit=12&fields=title,author_name,cover_i,number_of_pages_median,first_publish_year,subject&q="
       + encodeURIComponent(termo);
-    const r = await fetch(url);
+    const r = await fetchT(url);
     if (!r.ok) throw new Error("openlibrary " + r.status);
     const j = await r.json();
     return (j.docs || []).map((d) => ({
@@ -96,7 +104,7 @@ const APIs = (() => {
   }
   // BrasilAPI — melhor cobertura de livros brasileiros por ISBN
   async function brasilapiISBN(isbn) {
-    const r = await fetch(`https://brasilapi.com.br/api/isbn/v1/${isbn}`);
+    const r = await fetchT(`https://brasilapi.com.br/api/isbn/v1/${isbn}`);
     if (!r.ok) return null;
     const d = await r.json();
     return {
@@ -125,7 +133,7 @@ const APIs = (() => {
     } catch {}
     // 3) reserva: Open Library pelo endpoint de ISBN
     try {
-      const r = await fetch(`https://openlibrary.org/isbn/${isbn}.json`);
+      const r = await fetchT(`https://openlibrary.org/isbn/${isbn}.json`);
       if (r.ok) {
         const d = await r.json();
         return [{
@@ -146,7 +154,7 @@ const APIs = (() => {
   // ---------- Jikan / MyAnimeList ----------
   async function jikanManga(termo) {
     const url = "https://api.jikan.moe/v4/manga?limit=12&q=" + encodeURIComponent(termo);
-    const r = await fetch(url);
+    const r = await fetchT(url);
     if (!r.ok) throw new Error("jikan " + r.status);
     const j = await r.json();
     return (j.data || []).map((m) => ({
@@ -175,7 +183,7 @@ const APIs = (() => {
         }
       }
     }`;
-    const r = await fetch("https://graphql.anilist.co", {
+    const r = await fetchT("https://graphql.anilist.co", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Accept": "application/json" },
       body: JSON.stringify({ query, variables: { s: termo } }),
@@ -212,12 +220,12 @@ const APIs = (() => {
   // já saíram. Retorna { id, ultimo } ou null.
   async function mangadexInfo(titulo) {
     try {
-      const s = await fetch("https://api.mangadex.org/manga?limit=1&title=" + encodeURIComponent(titulo));
+      const s = await fetchT("https://api.mangadex.org/manga?limit=1&title=" + encodeURIComponent(titulo));
       if (!s.ok) return null;
       const sj = await s.json();
       const m = sj.data && sj.data[0];
       if (!m) return null;
-      const c = await fetch(`https://api.mangadex.org/chapter?manga=${m.id}&limit=1&order[chapter]=desc`);
+      const c = await fetchT(`https://api.mangadex.org/chapter?manga=${m.id}&limit=1&order[chapter]=desc`);
       if (!c.ok) return { id: m.id, ultimo: null };
       const cj = await c.json();
       const cap = cj.data && cj.data[0] && cj.data[0].attributes.chapter;

@@ -6,7 +6,7 @@
    - Senão                                        -> LOCAL (localStorage)
 
    A API pública é a MESMA nos dois (list, get, add, update, remove,
-   addSession, sessionsOf, stats) — o resto do app não sabe nem se importa
+   sessões, coleções, metas, push) — o resto do app não sabe nem se importa
    com qual backend está rodando. Tudo assíncrono (Promise).
    ============================================================ */
 const Store = (() => {
@@ -275,16 +275,6 @@ const Store = (() => {
   /* ========================================================== */
   const backend = temNuvem ? Cloud : Local;
 
-  // estatísticas (comum aos dois — usa list)
-  async function stats() {
-    const itens = await backend.list();
-    const anoAtual = new Date().getFullYear();
-    const lidosAno = itens.filter(
-      (i) => i.status === "lido" && new Date(i.updated_at).getFullYear() === anoAtual
-    ).length;
-    return { total: itens.length, lidosAno };
-  }
-
   return {
     mode: backend.mode,
     cloud: temNuvem,
@@ -310,7 +300,6 @@ const Store = (() => {
     removeCollection: (id) => backend.removeCollection(id),
     getGoal: (y) => backend.getGoal(y),
     setGoal: (y, t) => backend.setGoal(y, t),
-    stats,
     // push
     salvarInscricaoPush: (sub) => backend.salvarInscricaoPush && backend.salvarInscricaoPush(sub),
     _sb: backend._sb || null,

@@ -1,4 +1,13 @@
-# Cloudflare Pages — cabeçalhos
+# Cloudflare Pages/Workers — cabeçalhos
+
+# --- Segurança (a CSP fica no <meta> do index.html, portátil; aqui vão os
+#     cabeçalhos que só valem como header HTTP de verdade) ---
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), camera=(), microphone=(), payment=(), usb=()
+
 # O service worker não pode ficar preso em cache, senão as atualizações não chegam.
 /sw.js
   Cache-Control: no-cache
