@@ -31,6 +31,39 @@
   const ui = { kind: "livro", status: "lendo", view: "grid", filtro: "",
     adv: { genero: "", formato: "", ano: "", autor: "", colecao: "" } };
 
+  // ---------- ícones flat (SVG inline, monocromáticos, herdam a cor) ----------
+  const ICON_PATHS = {
+    book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+    zap: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+    bookmark: '<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
+    chart: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/>',
+    bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+    lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    unlock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>',
+    logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
+    pencil: '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+    trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+    sliders: '<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
+    refresh: '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>',
+    bookopen: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
+    phone: '<rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>',
+    layers: '<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>',
+    plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+    check: '<polyline points="20 6 9 17 4 12"/>',
+  };
+  const KIND_ICON = { livro: "book", quadrinho: "zap", manga: "bookmark" };
+  function ico(name, size = 18) {
+    return `<svg class="ico" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[name] || ""}</svg>`;
+  }
+  // pinta os ícones estáticos do HTML (marcados com data-ico)
+  function pintarIcones() {
+    document.querySelectorAll("[data-ico]").forEach((el) => {
+      el.innerHTML = ico(el.dataset.ico, Number(el.dataset.size) || 18);
+    });
+  }
+
   // ---------- atalhos ----------
   const $ = (id) => document.getElementById(id);
   const hojeISO = () => {
@@ -139,9 +172,9 @@
           <div class="stat-num"><b>${lidosMes.length}</b><span>em ${MESES[mesAtual]}</span></div>
         </div>
         <div class="stats-tipos">
-          <span>📖 ${porTipo.livro} livros</span>
-          <span>💥 ${porTipo.quadrinho} quadrinhos</span>
-          <span>🎌 ${porTipo.manga} mangás</span>
+          <span>${ico("book", 15)} ${porTipo.livro} livros</span>
+          <span>${ico("zap", 15)} ${porTipo.quadrinho} quadrinhos</span>
+          <span>${ico("bookmark", 15)} ${porTipo.manga} mangás</span>
         </div>
       </div>
 
@@ -248,8 +281,8 @@
           <div class="hist-hora">${horaDe(s.date)}</div>
         </div>
         <div class="hist-acoes">
-          <button class="hist-btn" data-act="editar" aria-label="Editar">✏️</button>
-          <button class="hist-btn" data-act="excluir" aria-label="Excluir">🗑</button>
+          <button class="hist-btn" data-act="editar" aria-label="Editar">${ico("pencil", 16)}</button>
+          <button class="hist-btn" data-act="excluir" aria-label="Excluir">${ico("trash", 16)}</button>
         </div>
       </div>`;
     });
@@ -487,7 +520,7 @@
     if (!(await bioSuportado())) { btn.hidden = true; return; }
     btn.hidden = false;
     const ligado = localStorage.getItem("bioOn") === "1";
-    btn.textContent = ligado ? "🔒" : "🔓";
+    btn.innerHTML = ico(ligado ? "lock" : "unlock", 18);
     btn.title = ligado ? "Bloqueio biométrico ativo (clique p/ desativar)" : "Ativar bloqueio biométrico";
   }
 
@@ -501,11 +534,13 @@
   }
 
   function capaHTML(item, cls) {
+    const fb = ico(KIND_ICON[item.kind] || "book", 30);
     if (item.cover_url) {
+      const fbAttr = fb.replace(/"/g, "&quot;");
       return `<img class="${cls}" src="${esc(capaURL(item.cover_url))}" alt="" loading="lazy"
-              onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'${cls} fb',textContent:'${KIND[item.kind].emoji}'}))">`;
+              onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'${cls} fb',innerHTML:'${fbAttr}'}))">`;
     }
-    return `<div class="${cls} fb">${KIND[item.kind].emoji}</div>`;
+    return `<div class="${cls} fb">${fb}</div>`;
   }
 
   // progresso 0..1 conforme a categoria
@@ -606,9 +641,9 @@
       const progHTML = progTxt
         ? `<div class="card-prog">${progTxt}${pctTxt ? " · " + pctTxt : ""}</div>` : "";
       const fmtBadge = i.format
-        ? `<span class="fmt-badge">${i.format === "fisico" ? "📖 Físico" : "💾 Digital"}</span>` : "";
+        ? `<span class="fmt-badge">${ico(i.format === "fisico" ? "bookopen" : "phone", 13)} ${i.format === "fisico" ? "Físico" : "Digital"}</span>` : "";
       const colNome = i.collection_id ? nomeColecao(i.collection_id) : "";
-      const colBadge = colNome ? `<span class="col-badge">📚 ${esc(colNome)}</span>` : "";
+      const colBadge = colNome ? `<span class="col-badge">${ico("layers", 13)} ${esc(colNome)}</span>` : "";
 
       if (ui.view === "list") {
         return `<div class="card" data-id="${i.id}">
@@ -695,8 +730,8 @@
         div.className = "res-item";
         const capa = r.cover_url
           ? `<img class="res-capa" src="${esc(capaURL(r.cover_url))}" alt="" loading="lazy"
-               onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'res-capa fb',textContent:'${KIND[ui.kind].emoji}'}))">`
-          : `<div class="res-capa fb">${KIND[ui.kind].emoji}</div>`;
+               onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'res-capa fb',innerHTML:'${ico(KIND_ICON[ui.kind], 22).replace(/"/g, "&quot;")}'}))">`
+          : `<div class="res-capa fb">${ico(KIND_ICON[ui.kind], 22)}</div>`;
         const meta = r.total_pages ? `${r.total_pages} págs`
           : r.total_chapters ? `${r.total_chapters} caps`
           : r.total_volumes ? `${r.total_volumes} vols` : "";
@@ -758,8 +793,8 @@
       <label class="campo">Formato</label>
       <select class="input" id="m-format">
         <option value="" ${ed && !ed.format ? "selected" : ""}>— Não definido</option>
-        <option value="fisico" ${ed && ed.format === "fisico" ? "selected" : ""}>📖 Físico</option>
-        <option value="digital" ${ed && ed.format === "digital" ? "selected" : ""}>💾 Digital</option>
+        <option value="fisico" ${ed && ed.format === "fisico" ? "selected" : ""}>Físico</option>
+        <option value="digital" ${ed && ed.format === "digital" ? "selected" : ""}>Digital</option>
       </select>
       <div class="datas-linha">
         <label class="campo-inline">Data de início
@@ -873,7 +908,7 @@
         </div>
         <div class="prog-dica">
           Em andamento? Use o total de capítulos já <b>lançados</b>.
-          <button class="link-btn" id="f-detectar" type="button">🔄 detectar lançados</button>
+          <button class="link-btn ico-btn" id="f-detectar" type="button">${ico("refresh", 14)} detectar lançados</button>
         </div>
         <div class="prog-linha">
           <input class="input" id="f-curv" type="number" inputmode="numeric" value="${it.current_volume || 0}">
@@ -892,7 +927,7 @@
       <div class="ficha-secao">
         <h4>Notificações</h4>
         <button class="${it.notify ? "btn-primary" : "btn-ghost"}" id="f-notify">
-          ${it.notify ? "🔔 Avisos ligados — desligar" : "🔔 Avisar quando sair capítulo novo"}
+          ${ico("bell", 15)} ${it.notify ? "Avisos ligados — desligar" : "Avisar quando sair capítulo novo"}
         </button>
         <div class="prog-dica">${it.notify
           ? `Vigiando a partir do capítulo ${it.last_notified_chapter || "?"}. Você recebe um push quando sair um novo — mesmo com o app fechado.`
@@ -936,8 +971,8 @@
       <div class="ficha-secao">
         <h4>Formato</h4>
         <div class="status-select" id="f-formato">
-          <button class="status-op ${it.format === "fisico" ? "is-active" : ""}" data-fmt="fisico" style="${it.format === "fisico" ? "background:var(--acento);border-color:var(--acento);color:#14110c" : ""}">📖 Físico</button>
-          <button class="status-op ${it.format === "digital" ? "is-active" : ""}" data-fmt="digital" style="${it.format === "digital" ? "background:var(--acento);border-color:var(--acento);color:#14110c" : ""}">💾 Digital</button>
+          <button class="status-op ico-btn ${it.format === "fisico" ? "is-active" : ""}" data-fmt="fisico" style="${it.format === "fisico" ? "background:var(--acento);border-color:var(--acento);color:#14110c" : ""}">${ico("bookopen", 15)} Físico</button>
+          <button class="status-op ico-btn ${it.format === "digital" ? "is-active" : ""}" data-fmt="digital" style="${it.format === "digital" ? "background:var(--acento);border-color:var(--acento);color:#14110c" : ""}">${ico("phone", 15)} Digital</button>
           <button class="status-op ${!it.format ? "is-active" : ""}" data-fmt="">— Não definido</button>
         </div>
       </div>
@@ -970,7 +1005,7 @@
       ${it.synopsis ? `<div class="ficha-secao"><h4>Sinopse</h4><div class="sinopse">${esc(it.synopsis)}</div></div>` : ""}
 
       <div class="ficha-rodape">
-        <button class="btn-ghost" id="f-editar">✏️ Editar</button>
+        <button class="btn-ghost ico-btn" id="f-editar">${ico("pencil", 15)} Editar</button>
         <button class="btn-ghost" id="f-fechar2">Fechar</button>
         <button class="btn-perigo" id="f-remover">Remover</button>
       </div>`;
@@ -1041,16 +1076,15 @@
     // --- detectar capítulos lançados (MangaDex) ---
     const btnDet = $("f-detectar");
     if (btnDet) btnDet.addEventListener("click", async () => {
-      btnDet.textContent = "🔄 buscando…"; btnDet.disabled = true;
+      btnDet.innerHTML = ico("refresh", 14) + " buscando…"; btnDet.disabled = true;
       const cap = await APIs.mangadexUltimoCapitulo(it.title);
       btnDet.disabled = false;
+      btnDet.innerHTML = ico("refresh", 14) + " detectar lançados";
       if (cap) {
         $("f-tot").value = cap;
         await salvarProg();
-        btnDet.textContent = "🔄 detectar lançados";
         toast(`Último lançado: capítulo ${cap}`);
       } else {
-        btnDet.textContent = "🔄 detectar lançados";
         toast("Não encontrei na MangaDex — preencha manualmente");
       }
     });
@@ -1242,6 +1276,7 @@
   //  BOOT
   // ============================================================
   async function boot() {
+    pintarIcones();          // ícones flat estáticos
     ligarEventos();
 
     // decide: login (nuvem sem sessão) → tranca biométrica → biblioteca

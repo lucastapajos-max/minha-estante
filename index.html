@@ -12,12 +12,12 @@
 </head>
 <body>
   <!-- Splash inicial -->
-  <div id="splash"><div class="splash-logo">📚</div></div>
+  <div id="splash"><div class="splash-logo" data-ico="book" data-size="44"></div></div>
 
   <!-- ===== Tela de login (só no modo nuvem) ===== -->
   <section id="tela-login" class="login-tela" hidden>
     <div class="login-card">
-      <div class="login-logo">📚</div>
+      <div class="login-logo" data-ico="book" data-size="40"></div>
       <div class="login-titulo">Estante</div>
       <div class="login-sub">Entre para acessar sua biblioteca</div>
       <input id="login-email" class="input" type="email" inputmode="email" placeholder="E-mail" autocomplete="username">
@@ -30,11 +30,11 @@
   <!-- ===== Tela de desbloqueio biométrico (#8) ===== -->
   <section id="tela-lock" class="login-tela" hidden>
     <div class="login-card">
-      <div class="login-logo">🔒</div>
+      <div class="login-logo" data-ico="lock" data-size="40"></div>
       <div class="login-titulo">Estante</div>
       <div class="login-sub">Desbloqueie para ver sua estante</div>
       <div class="login-erro" id="lock-erro"></div>
-      <button class="btn-primary login-btn" id="btn-desbloquear">🔓 Desbloquear</button>
+      <button class="btn-primary login-btn ico-btn" id="btn-desbloquear"><span data-ico="unlock" data-size="17"></span> Desbloquear</button>
       <button class="link-btn" id="btn-lock-sair">Sair da conta</button>
     </div>
   </section>
@@ -43,13 +43,13 @@
     <!-- ===== Cabeçalho ===== -->
     <header class="topbar">
       <div class="brand">
-        <span class="brand-logo">📚</span>
+        <span class="brand-logo" data-ico="book" data-size="22"></span>
         <span class="brand-name">Estante</span>
       </div>
       <div class="topbar-actions">
-        <button class="btn-primary" id="btn-adicionar">+ Adicionar</button>
-        <button class="icon-btn" id="btn-bio" aria-label="Bloqueio biométrico" title="Bloqueio biométrico" hidden>🔓</button>
-        <button class="icon-btn" id="btn-sair" aria-label="Sair" hidden>⎋</button>
+        <button class="btn-primary ico-btn" id="btn-adicionar"><span data-ico="plus" data-size="16"></span> Adicionar</button>
+        <button class="icon-btn" id="btn-bio" aria-label="Bloqueio biométrico" title="Bloqueio biométrico" data-ico="unlock" hidden></button>
+        <button class="icon-btn" id="btn-sair" aria-label="Sair" data-ico="logout" hidden></button>
       </div>
     </header>
 
@@ -78,7 +78,7 @@
         <button class="vt is-active" data-view="grid" aria-label="Grade">▦</button>
         <button class="vt" data-view="list" aria-label="Lista">≣</button>
       </div>
-      <button class="btn-ghost btn-filtros" id="btn-filtros" aria-label="Filtros avançados">⚙ Filtros</button>
+      <button class="btn-ghost btn-filtros ico-btn" id="btn-filtros" aria-label="Filtros avançados"><span data-ico="sliders" data-size="15"></span> Filtros</button>
     </div>
 
     <!-- #10 filtros avançados -->
@@ -86,8 +86,8 @@
       <select id="fa-genero" class="select-status"></select>
       <select id="fa-formato" class="select-status">
         <option value="">Formato: todos</option>
-        <option value="fisico">📖 Físico</option>
-        <option value="digital">💾 Digital</option>
+        <option value="fisico">Físico</option>
+        <option value="digital">Digital</option>
       </select>
       <select id="fa-ano" class="select-status"></select>
       <select id="fa-autor" class="select-status"></select>
@@ -100,7 +100,7 @@
 
     <!-- Estado vazio -->
     <div class="vazio" id="vazio" hidden>
-      <div class="vazio-emoji">🔖</div>
+      <div class="vazio-emoji" data-ico="book" data-size="46"></div>
       <div class="vazio-titulo">Sua estante está vazia por aqui</div>
       <div class="vazio-sub">Toque em <b>+ Adicionar</b> para buscar e cadastrar seu primeiro título.</div>
     </div>
@@ -113,15 +113,15 @@
 
     <!-- ===== VIEW: Histórico de Leitura ===== -->
     <section id="view-historico" hidden>
-      <h2 class="view-titulo">🕑 Histórico de leitura</h2>
+      <h2 class="view-titulo ico-btn" style="justify-content:flex-start"><span data-ico="clock" data-size="22"></span> Histórico de leitura</h2>
       <div id="historico-corpo"></div>
     </section>
 
     <!-- ===== Menu inferior (mobile-style) ===== -->
     <nav class="bottom-nav" id="bottom-nav">
-      <button class="bn-item is-active" data-view="biblioteca"><span class="bn-ico">📚</span><span>Biblioteca</span></button>
-      <button class="bn-item" data-view="stats"><span class="bn-ico">📊</span><span>Estatísticas</span></button>
-      <button class="bn-item" data-view="historico"><span class="bn-ico">🕑</span><span>Histórico</span></button>
+      <button class="bn-item is-active" data-view="biblioteca"><span class="bn-ico" data-ico="book" data-size="22"></span><span>Biblioteca</span></button>
+      <button class="bn-item" data-view="stats"><span class="bn-ico" data-ico="chart" data-size="22"></span><span>Estatísticas</span></button>
+      <button class="bn-item" data-view="historico"><span class="bn-ico" data-ico="clock" data-size="22"></span><span>Histórico</span></button>
     </nav>
   </main>
 
