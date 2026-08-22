@@ -52,6 +52,8 @@
     plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
     target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
     check: '<polyline points="20 6 9 17 4 12"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
+    moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
   };
   const KIND_ICON = { livro: "book", quadrinho: "zap", manga: "bookmark" };
   function ico(name, size = 18) {
@@ -62,6 +64,20 @@
     document.querySelectorAll("[data-ico]").forEach((el) => {
       el.innerHTML = ico(el.dataset.ico, Number(el.dataset.size) || 18);
     });
+  }
+
+  // ---------- tema claro/escuro ----------
+  const temaAtual = () => (document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark");
+  function atualizarBotaoTema() {
+    const btn = document.getElementById("btn-tema");
+    if (btn) btn.innerHTML = ico(temaAtual() === "dark" ? "sun" : "moon", 18);
+  }
+  function aplicarTema(t) {
+    document.documentElement.setAttribute("data-theme", t);
+    try { localStorage.setItem("tema", t); } catch {}
+    const meta = document.getElementById("meta-theme");
+    if (meta) meta.content = t === "light" ? "#f7f2e9" : "#16130f";
+    atualizarBotaoTema();
   }
 
   // ---------- atalhos ----------
@@ -1222,6 +1238,9 @@
       location.reload();
     });
 
+    // tema claro/escuro
+    $("btn-tema").addEventListener("click", () => aplicarTema(temaAtual() === "dark" ? "light" : "dark"));
+
     // #8 biometria
     $("btn-bio").addEventListener("click", async () => {
       if (localStorage.getItem("bioOn") === "1") {
@@ -1277,6 +1296,7 @@
   // ============================================================
   async function boot() {
     pintarIcones();          // ícones flat estáticos
+    atualizarBotaoTema();    // ícone sol/lua conforme o tema salvo
     ligarEventos();
 
     // decide: login (nuvem sem sessão) → tranca biométrica → biblioteca

@@ -25,6 +25,26 @@
   --st-abandonado: #e0736b;
 }
 
+/* ===== Tema claro (papel quente) ===== */
+:root[data-theme="light"] {
+  --bg:        #f7f2e9;
+  --bg-card:   #ffffff;
+  --bg-card-2: #efe7d8;
+  --linha:     #e2d8c6;
+  --txt:       #2b2118;
+  --txt-suave: #6a5b47;
+  --txt-fraco: #9c8c75;
+  --acento:    #c17d2a;
+  --acento-2:  #9a5f0f;
+  --sombra:    0 8px 24px rgba(120,90,40,.14);
+
+  --st-lendo:      #2f80d6;
+  --st-quero_ler:  #8a5cf0;
+  --st-lido:       #2e9e63;
+  --st-pausado:    #c17d2a;
+  --st-abandonado: #d1544a;
+}
+
 * { box-sizing: border-box; }
 
 /* ===== Ícones flat (SVG monocromático) ===== */
