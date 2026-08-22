@@ -635,7 +635,10 @@
     if (ui.filtro) {
       const f = ui.filtro.toLowerCase();
       itens = itens.filter((i) =>
-        i.title.toLowerCase().includes(f) || (i.authors || "").toLowerCase().includes(f));
+        i.title.toLowerCase().includes(f) ||
+        (i.authors || "").toLowerCase().includes(f) ||
+        (i.collection_id && nomeColecao(i.collection_id).toLowerCase().includes(f)) ||
+        (i.genres || []).some((g) => g.toLowerCase().includes(f)));
     }
     // #10 filtros avançados
     if (ui.adv.genero) itens = itens.filter((i) => (i.genres || []).includes(ui.adv.genero));
