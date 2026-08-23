@@ -871,6 +871,76 @@
   }
 
   // ============================================================
+  //  BACKUP (exportar / restaurar)
+  // ============================================================
+  function baixarArquivo(nome, texto, tipo = "application/json") {
+    const blob = new Blob([texto], { type: tipo });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = nome;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function exportarDados() {
+    try {
+      $("restore-status").textContent = "Gerando backup…";
+      const [items, collections, sessions, goals] = await Promise.all([
+        Store.list(), Store.listCollections(), Store.listAllSessions(100000), Store.listGoals(),
+      ]);
+      const sess = sessions.map(({ item, ...s }) => s);   // tira o join de item
+      const dados = {
+        versao: "estante-backup-1",
+        exportado_em: new Date().toISOString(),
+        items, collections, sessions: sess, goals,
+      };
+      baixarArquivo(`estante-backup-${hojeISO()}.json`, JSON.stringify(dados, null, 2));
+      $("restore-status").textContent = `Backup gerado: ${items.length} livro(s).`;
+      toast("Backup exportado ✓");
+    } catch (e) {
+      $("restore-status").textContent = "Não deu pra exportar agora.";
+    }
+  }
+
+  async function restaurarBackup(file) {
+    const st = $("restore-status");
+    let dados;
+    try { dados = JSON.parse(await file.text()); }
+    catch { st.textContent = "Arquivo inválido (não é um JSON)."; return; }
+    if (!dados || !Array.isArray(dados.items)) { st.textContent = "Backup sem livros — arquivo não reconhecido."; return; }
+    try {
+      // 1) coleções: cria as que faltam (por nome) e mapeia id antigo → novo
+      const colAtuais = await Store.listCollections();
+      const porNome = new Map(colAtuais.map((c) => [(c.name || "").toLowerCase(), c.id]));
+      const mapaCol = new Map();
+      for (const c of (dados.collections || [])) {
+        let novoId = porNome.get((c.name || "").toLowerCase());
+        if (!novoId && c.name) { const nova = await Store.addCollection(c.name, c.kind); novoId = nova.id; porNome.set(c.name.toLowerCase(), novoId); }
+        if (c.id && novoId) mapaCol.set(c.id, novoId);
+      }
+      // 2) livros: pula os que já existem (por título), remapeia a coleção
+      const existentes = new Set((await Store.list()).map((i) => (i.title || "").toLowerCase().trim()));
+      let add = 0, pulados = 0;
+      for (const it of dados.items) {
+        const chave = (it.title || "").toLowerCase().trim();
+        if (!chave || existentes.has(chave)) { pulados++; continue; }
+        const { id, user_id, created_at, updated_at, ...campos } = it;
+        campos.collection_id = it.collection_id ? (mapaCol.get(it.collection_id) || null) : null;
+        try { await Store.add(campos); existentes.add(chave); add++; }
+        catch { /* item problemático → pula */ }
+        st.textContent = `Restaurando… ${add} adicionado(s)`;
+      }
+      // 3) metas
+      for (const g of (dados.goals || [])) { if (g && g.year && g.target) { try { await Store.setGoal(g.year, g.target); } catch {} } }
+      st.textContent = `Restaurado: ${add} livro(s), ${pulados} já existia(m). (histórico de sessões não é restaurado)`;
+      toast(`Restaurado: ${add} livro(s) ✓`);
+      renderBiblioteca();
+    } catch (e) {
+      st.textContent = "Erro ao restaurar. Verifique a conexão e tente de novo.";
+    }
+  }
+
+  // ============================================================
   //  MODAL CADASTRO MANUAL
   // ============================================================
   // usado como CADASTRO (existente = null) e como EDIÇÃO (existente = item)
@@ -1314,6 +1384,11 @@
     $("import-fechar").addEventListener("click", () => ($("modal-import").hidden = true));
     $("import-cancel").addEventListener("click", () => ($("modal-import").hidden = true));
     $("import-run").addEventListener("click", importarLista);
+    $("btn-exportar").addEventListener("click", exportarDados);
+    $("btn-restaurar").addEventListener("click", () => $("restore-file").click());
+    $("restore-file").addEventListener("change", (e) => {
+      const f = e.target.files[0]; if (f) restaurarBackup(f); e.target.value = "";
+    });
     $("manual-fechar").addEventListener("click", () => ($("modal-manual").hidden = true));
     $("ficha-fechar").addEventListener("click", () => ($("modal-ficha").hidden = true));
     $("rapido-fechar").addEventListener("click", () => ($("modal-rapido").hidden = true));
@@ -1417,6 +1492,12 @@
         if (!s && !$("app").hidden) recarregar();
       });
     }
+
+    // aviso de conexão (offline)
+    const atualizarOffline = () => { const b = $("offline-banner"); if (b) b.hidden = navigator.onLine; };
+    window.addEventListener("online", atualizarOffline);
+    window.addEventListener("offline", atualizarOffline);
+    atualizarOffline();
 
     // decide: login (nuvem sem sessão) → tranca biométrica → biblioteca
     let sessao = null;

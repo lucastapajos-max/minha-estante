@@ -137,6 +137,9 @@ const Store = (() => {
       },
       async getGoal(year) { return _ler().goals[year] || 0; },
       async setGoal(year, target) { const db = _ler(); db.goals[year] = target; _salvar(); return target; },
+      async listGoals() {
+        return Object.entries(_ler().goals).map(([year, target]) => ({ year: Number(year), target }));
+      },
     };
   })();
 
@@ -255,6 +258,11 @@ const Store = (() => {
         if (error) throw error;
         return target;
       },
+      async listGoals() {
+        const { data, error } = await sb.from("goals").select("year, target");
+        if (error) throw error;
+        return data || [];
+      },
 
       // ---- push (Fase 3) ----
       async salvarInscricaoPush(sub) {
@@ -300,6 +308,7 @@ const Store = (() => {
     removeCollection: (id) => backend.removeCollection(id),
     getGoal: (y) => backend.getGoal(y),
     setGoal: (y, t) => backend.setGoal(y, t),
+    listGoals: () => backend.listGoals(),
     // push
     salvarInscricaoPush: (sub) => backend.salvarInscricaoPush && backend.salvarInscricaoPush(sub),
     _sb: backend._sb || null,

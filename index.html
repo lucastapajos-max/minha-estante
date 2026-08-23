@@ -49,6 +49,8 @@
   </section>
 
   <main id="app" hidden>
+    <!-- aviso de conexão -->
+    <div id="offline-banner" hidden>Sem conexão — suas alterações podem não salvar até voltar a internet.</div>
     <!-- ===== Cabeçalho ===== -->
     <header class="topbar">
       <div class="brand">
@@ -172,7 +174,7 @@
       <div class="add-manual-linha">
         <button class="link-btn" id="btn-manual">ou cadastrar manualmente</button>
         <span class="add-sep">·</span>
-        <button class="link-btn" id="btn-import">importar lista</button>
+        <button class="link-btn" id="btn-import">importar / backup</button>
       </div>
     </div>
   </div>
@@ -195,6 +197,16 @@
         <button class="btn-primary" id="import-run">Importar</button>
       </div>
       <div class="add-hint" id="import-status"></div>
+
+      <hr class="modal-sep">
+      <div class="modal-titulo" style="font-size:15px">Backup dos seus dados</div>
+      <div class="add-hint">Baixe um arquivo com toda a sua estante (livros, coleções e metas) ou restaure de um backup.</div>
+      <div class="ficha-rodape" style="margin-top:8px">
+        <button class="btn-ghost ico-btn" id="btn-exportar">Exportar backup</button>
+        <button class="btn-ghost ico-btn" id="btn-restaurar">Restaurar backup</button>
+        <input type="file" id="restore-file" accept="application/json,.json" hidden>
+      </div>
+      <div class="add-hint" id="restore-status"></div>
     </div>
   </div>
 
