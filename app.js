@@ -69,6 +69,8 @@
     check: '<polyline points="20 6 9 17 4 12"/>',
     sun: '<circle cx="12" cy="12" r="4"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
     moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+    flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+    trophy: '<path d="M6 9a6 6 0 0 0 12 0V3H6z"/><path d="M6 5H3a2 2 0 0 0 2 4M18 5h3a2 2 0 0 1-2 4"/><line x1="12" y1="15" x2="12" y2="19"/><line x1="8" y1="22" x2="16" y2="22"/><line x1="12" y1="19" x2="12" y2="22"/>',
   };
   const KIND_ICON = { livro: "book", quadrinho: "zap", manga: "bookmark" };
   function ico(name, size = 18) {
@@ -183,6 +185,37 @@
     const mediaCaps = (volCaps / dias).toFixed(1).replace(".0", "");
     const rotuloPeriodo = { semana: "nos últimos 7 dias", mes: `em ${MESES[mesAtual]}`, ano: `em ${ano}` }[statsPeriodo];
 
+    // #1 sequência de leitura (dias seguidos com sessão)
+    const diaLocal = (iso) => { const d = new Date(iso); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+    const diasLeitura = new Set(sessoes.map((s) => diaLocal(s.date)));
+    let streakAtual = 0;
+    { let d = new Date(); if (!diasLeitura.has(hojeISO())) d.setDate(d.getDate() - 1);
+      while (diasLeitura.has(diaLocal(d.toISOString()))) { streakAtual++; d.setDate(d.getDate() - 1); } }
+    let maiorStreak = 0;
+    { const ds = [...diasLeitura].sort(); let cur = 0, prev = null;
+      for (const x of ds) { cur = (prev && (new Date(x) - new Date(prev)) === 86400000) ? cur + 1 : 1; if (cur > maiorStreak) maiorStreak = cur; prev = x; } }
+
+    // #3 ritmo
+    const lidosComPag = lidos.filter((i) => i.total_pages);
+    const maisLongo = lidosComPag.reduce((a, i) => (!a || i.total_pages > a.total_pages ? i : a), null);
+    const maisCurto = lidosComPag.reduce((a, i) => (!a || i.total_pages < a.total_pages ? i : a), null);
+    const totalPagSess = sessoes.filter((s) => s.unit === "paginas").reduce((a, s) => a + (s.amount || 0), 0);
+    const mediaPagDiaGeral = diasLeitura.size ? Math.round(totalPagSess / diasLeitura.size) : 0;
+    const duracoes = lidos.filter((i) => i.started_at && i.finished_at)
+      .map((i) => Math.round((new Date(i.finished_at) - new Date(i.started_at)) / 86400000) + 1)
+      .filter((d) => d >= 1 && d < 3650);
+    const tempoMedio = duracoes.length ? Math.round(duracoes.reduce((a, b) => a + b, 0) / duracoes.length) : null;
+
+    // #2 retrospectiva do ano
+    const pagesAno = lidosAno.reduce((a, i) => a + (i.total_pages || 0), 0);
+    const favorito = lidosAno.filter((i) => i.rating).sort((a, b) => (b.rating - a.rating) || quando(b).localeCompare(quando(a)))[0];
+    const contaGen = {}; lidosAno.forEach((i) => (i.genres || []).forEach((g) => { if (g) contaGen[g] = (contaGen[g] || 0) + 1; }));
+    const genTopAno = Object.entries(contaGen).sort((a, b) => b[1] - a[1])[0];
+    const contaAut = {}; lidosAno.forEach((i) => { if (i.authors) contaAut[i.authors] = (contaAut[i.authors] || 0) + 1; });
+    const autTopAno = Object.entries(contaAut).sort((a, b) => b[1] - a[1])[0];
+    const mesTopIdx = porMes.indexOf(Math.max(...porMes));
+    const mesTop = porMes[mesTopIdx] > 0 ? MESES[mesTopIdx] : null;
+
     $("stats-corpo").innerHTML = `
       <div class="stats-secao">
         <h4>Meta de ${ano}</h4>
@@ -196,6 +229,16 @@
           <div class="meta-txt"><b>${lidosAno.length}</b> de <b>${meta}</b> livros — ${pctMeta}%
             ${lidosAno.length >= meta ? " 🎉 meta batida!" : ` (faltam ${meta - lidosAno.length})`}</div>
         ` : `<div class="meta-txt">Defina uma meta pra acompanhar seu progresso do ano.</div>`}
+      </div>
+
+      <div class="stats-secao">
+        <div class="streak-card">
+          <span class="streak-ico">${ico("flame", 26)}</span>
+          <div>
+            <div class="streak-num">${streakAtual} ${streakAtual === 1 ? "dia" : "dias"} seguidos</div>
+            <div class="streak-sub">${streakAtual ? "de leitura — continue!" : "Registre um avanço hoje pra começar sua sequência"} ${maiorStreak > 1 ? `· recorde: ${maiorStreak}` : ""}</div>
+          </div>
+        </div>
       </div>
 
       <div class="stats-secao">
@@ -224,6 +267,26 @@
           <div class="stat-num"><b>${volCaps}</b><span>capítulos (mangás/HQs)</span></div>
         </div>
         <div class="meta-txt">Média diária ${rotuloPeriodo}: <b>${mediaPags}</b> pág/dia · <b>${mediaCaps}</b> cap/dia</div>
+      </div>
+
+      <div class="stats-secao">
+        <h4>${ico("trophy", 15)} Sua retrospectiva de ${ano}</h4>
+        ${lidosAno.length ? `<div class="retro-card">
+          <div class="retro-linha"><b>${lidosAno.length}</b> livro(s) e <b>${pagesAno.toLocaleString("pt-BR")}</b> páginas lidas</div>
+          ${favorito ? `<div class="retro-linha">Favorito: <b>${esc(favorito.title)}</b> (${Math.round(clampNota(favorito.rating))}★)</div>` : ""}
+          ${genTopAno ? `<div class="retro-linha">Gênero do ano: <b>${esc(genTopAno[0])}</b></div>` : ""}
+          ${autTopAno && autTopAno[1] > 1 ? `<div class="retro-linha">Autor mais lido: <b>${esc(autTopAno[0])}</b> (${autTopAno[1]} livros)</div>` : ""}
+          ${mesTop ? `<div class="retro-linha">Mês mais forte: <b>${mesTop}</b></div>` : ""}
+        </div>` : `<div class="meta-txt">Termine alguns livros em ${ano} pra ver sua retrospectiva.</div>`}
+      </div>
+
+      <div class="stats-secao">
+        <h4>Seu ritmo</h4>
+        <div class="stats-nums">
+          <div class="stat-num"><b>${mediaPagDiaGeral}</b><span>páginas/dia lido</span></div>
+          <div class="stat-num"><b>${tempoMedio != null ? tempoMedio : "—"}</b><span>dias p/ terminar (média)</span></div>
+        </div>
+        ${maisLongo ? `<div class="meta-txt">Mais longo: <b>${esc(maisLongo.title)}</b> (${maisLongo.total_pages} pág)${maisCurto && maisCurto !== maisLongo ? ` · mais curto: <b>${esc(maisCurto.title)}</b> (${maisCurto.total_pages} pág)` : ""}</div>` : ""}
       </div>
 
       <div class="stats-secao">
@@ -986,9 +1049,13 @@
       <div class="tags-box" id="m-genres-box"></div>
       <input class="input" id="m-genres-input" placeholder="Digite um gênero e Enter…" autocomplete="off">
       <div class="tags-sug" id="m-genres-sug"></div>
-      <label class="campo">URL da capa</label>
-      <input class="input" id="m-cover" placeholder="https://…" value="${ed ? esc(ed.cover_url) : ""}">
-      ${ed && ed.cover_url ? `<img src="${esc(capaURL(ed.cover_url))}" class="edit-capa-preview" alt="" onerror="this.style.display='none'">` : ""}
+      <label class="campo">Capa</label>
+      <input class="input" id="m-cover" placeholder="Cole uma URL ou use 'Buscar capas'" value="${ed ? esc(ed.cover_url) : ""}">
+      <div class="capa-acoes">
+        <img id="m-capa-preview" class="edit-capa-preview" alt="" src="${ed && ed.cover_url ? esc(capaURL(ed.cover_url)) : ""}" ${ed && ed.cover_url ? "" : "hidden"} onerror="this.hidden=true">
+        <button class="btn-ghost ico-btn" id="m-buscar-capa" type="button">${ico("refresh", 14)} Buscar capas</button>
+      </div>
+      <div class="capas-grid" id="m-capas"></div>
       <label class="campo">Sinopse</label>
       <textarea class="input" id="m-syn" placeholder="Resumo…">${ed ? esc(ed.synopsis) : ""}</textarea>
       <div class="ficha-rodape">
@@ -1017,6 +1084,32 @@
     });
     inputG.addEventListener("blur", () => { if (inputG.value.trim()) { addG(inputG.value); inputG.value = ""; } });
     renderG();
+
+    // ----- capa: preview ao digitar + buscar opções em todas as APIs (#5) -----
+    const inpCover = $("m-cover"), prevCover = $("m-capa-preview");
+    inpCover.addEventListener("input", () => {
+      const u = inpCover.value.trim();
+      if (u) { prevCover.src = capaURL(u); prevCover.hidden = false; } else { prevCover.hidden = true; }
+    });
+    $("m-buscar-capa").addEventListener("click", async () => {
+      const titulo = $("m-title").value.trim();
+      if (!titulo) { toast("Preencha o título primeiro"); return; }
+      const grid = $("m-capas"), btnC = $("m-buscar-capa");
+      btnC.disabled = true;
+      grid.innerHTML = `<div class="spinner">Buscando capas…</div>`;
+      try {
+        const capas = await APIs.buscarCapas(k, `${titulo} ${$("m-authors").value.trim()}`.trim());
+        if (!capas.length) { grid.innerHTML = `<div class="spinner">Nenhuma capa encontrada. Cole uma URL acima.</div>`; return; }
+        grid.innerHTML = capas.map((u) => `<img class="capa-op" src="${esc(u)}" alt="" loading="lazy" data-u="${esc(u)}" onerror="this.remove()">`).join("");
+        grid.querySelectorAll(".capa-op").forEach((img) => img.addEventListener("click", () => {
+          inpCover.value = img.dataset.u;
+          prevCover.src = capaURL(img.dataset.u); prevCover.hidden = false;
+          grid.querySelectorAll(".capa-op").forEach((x) => x.classList.remove("sel"));
+          img.classList.add("sel");
+        }));
+      } catch { grid.innerHTML = `<div class="spinner">Erro ao buscar. Cole uma URL acima.</div>`; }
+      finally { btnC.disabled = false; }
+    });
 
     $("m-cancel").onclick = () => {
       $("modal-manual").hidden = true;

@@ -273,7 +273,12 @@ label.campo { display: block; margin: 12px 0 5px; font-size: 13px; color: var(--
 .res-titulo { font-weight: 600; font-size: 14px; }
 .res-sub { font-size: 12.5px; color: var(--txt-fraco); margin-top: 2px; }
 .res-add { align-self: center; }
-.edit-capa-preview { width: 70px; height: 105px; object-fit: cover; border-radius: 8px; margin-top: 8px; background: var(--bg-card-2); display: block; }
+.edit-capa-preview { width: 70px; height: 105px; object-fit: cover; border-radius: 8px; background: var(--bg-card-2); display: block; }
+.capa-acoes { display: flex; align-items: flex-end; gap: 12px; margin-top: 8px; }
+.capas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px; margin-top: 10px; }
+.capa-op { width: 100%; aspect-ratio: 2/3; object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid transparent; background: var(--bg-card-2); transition: border-color .1s; }
+.capa-op:hover { border-color: var(--txt-fraco); }
+.capa-op.sel { border-color: var(--acento); }
 
 /* editor de gêneros (tags) */
 .tags-box { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; min-height: 4px; }
@@ -358,6 +363,17 @@ label.campo { display: block; margin: 12px 0 5px; font-size: 13px; color: var(--
 .stat-num > b { display: block; font-size: 26px; color: var(--acento-2); }
 .stat-num > span { font-size: 12px; color: var(--txt-fraco); }
 .stats-tipos { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 13px; color: var(--txt-suave); }
+
+/* sequência (streak) */
+.streak-card { display: flex; align-items: center; gap: 14px; background: var(--bg-card-2); border-radius: var(--raio-sm); padding: 13px 16px; }
+.streak-ico { color: var(--acento); display: inline-flex; flex: 0 0 auto; }
+.streak-num { font-size: 19px; font-weight: 700; }
+.streak-sub { font-size: 12.5px; color: var(--txt-suave); margin-top: 2px; }
+
+/* retrospectiva */
+.retro-card { background: linear-gradient(135deg, rgba(224,164,88,.16), rgba(224,164,88,.03)); border: 1px solid var(--linha); border-radius: var(--raio-sm); padding: 14px 16px; }
+.retro-linha { font-size: 14px; margin: 5px 0; color: var(--txt-suave); }
+.retro-linha b { color: var(--txt); }
 .stats-tipos span { display: inline-flex; align-items: center; gap: 5px; }
 
 /* gráfico por mês (barras verticais) */

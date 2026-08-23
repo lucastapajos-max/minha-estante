@@ -241,6 +241,40 @@ const APIs = (() => {
     return info ? info.ultimo : null;
   }
 
+  // ---------- MangaDex: capa (arte) por título ----------
+  async function mangadexCapa(termo) {
+    try {
+      const s = await fetchT("https://api.mangadex.org/manga?limit=1&includes[]=cover_art&title=" + encodeURIComponent(termo));
+      if (!s.ok) return null;
+      const m = (await s.json()).data?.[0];
+      if (!m) return null;
+      const cover = (m.relationships || []).find((r) => r.type === "cover_art");
+      const file = cover && cover.attributes && cover.attributes.fileName;
+      return file ? `https://uploads.mangadex.org/covers/${m.id}/${file}.512.jpg` : null;
+    } catch { return null; }
+  }
+
+  // #5 opções de capa de TODAS as fontes usadas (dedup, sem vazias)
+  async function buscarCapas(kind, termo) {
+    const urls = new Set();
+    const push = (u) => { if (u && typeof u === "string") urls.add(u); };
+    if (kind === "manga") {
+      await Promise.all([
+        jikanManga(termo).then((rs) => rs.forEach((r) => push(r.cover_url))).catch(() => {}),
+        anilistManga(termo).then((rs) => rs.forEach((r) => push(r.cover_url))).catch(() => {}),
+        mangadexCapa(termo).then((u) => push(u)).catch(() => {}),
+      ]);
+    } else {
+      const isbn = extrairISBN(termo);
+      await Promise.all([
+        googleBooks(termo, false).then((rs) => rs.forEach((r) => push(r.cover_url))).catch(() => {}),
+        openLibrary(termo).then((rs) => rs.forEach((r) => push(r.cover_url))).catch(() => {}),
+        isbn ? buscarISBN(isbn).then((rs) => rs.forEach((r) => push(r.cover_url))).catch(() => {}) : Promise.resolve(),
+      ]);
+    }
+    return [...urls].slice(0, 24);
+  }
+
   // ---------- roteador por categoria ----------
   async function buscar(kind, termo) {
     termo = (termo || "").trim();
@@ -252,5 +286,5 @@ const APIs = (() => {
   }
 
   return { buscar, googleBooks, openLibrary, jikanManga, anilistManga,
-           mangadexInfo, mangadexUltimoCapitulo, buscarISBN, extrairISBN };
+           mangadexInfo, mangadexUltimoCapitulo, buscarISBN, extrairISBN, buscarCapas };
 })();
