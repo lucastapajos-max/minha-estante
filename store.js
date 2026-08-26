@@ -50,12 +50,16 @@ const Store = (() => {
   }
 
   // números vêm como string do PostgREST às vezes → normaliza
+  // gênero uniforme: sem underscore, Cada Palavra Capitalizada (fontes divergem:
+  // Jikan manda "Comedy", MangaBaka manda "comedy"/"school_life")
+  const _capGenero = (g) => String(g).replace(/_/g, " ").replace(/\s+/g, " ").trim()
+    .replace(/(^|[\s-])(\p{L})/gu, (_, sep, ch) => sep + ch.toUpperCase());
+
   function normaliza(row) {
     if (!row) return row;
     if (row.rating != null) row.rating = Number(row.rating);
     if (!Array.isArray(row.genres)) row.genres = row.genres || [];
-    // gêneros vindos de algumas fontes usam underscore (school_life) → espaço
-    row.genres = row.genres.map((g) => (typeof g === "string" ? g.replace(/_/g, " ") : g));
+    row.genres = row.genres.map((g) => (typeof g === "string" ? _capGenero(g) : g));
     return row;
   }
 

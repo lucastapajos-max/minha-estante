@@ -19,6 +19,11 @@ const APIs = (() => {
 
   const limpaHTML = (s) => (s || "").replace(/<[^>]*>/g, "").replace(/\s+\n/g, "\n").trim();
 
+  // gênero legível e uniforme: sem underscore e com Cada Palavra Capitalizada
+  // (school_life → School Life, sci-fi → Sci-Fi, comedy → Comedy)
+  const capGenero = (g) => String(g).replace(/_/g, " ").replace(/\s+/g, " ").trim()
+    .replace(/(^|[\s-])(\p{L})/gu, (_, sep, ch) => sep + ch.toUpperCase());
+
   // fetch com timeout (aborta se a API demorar demais — não trava a importação)
   async function fetchT(url, opts = {}, ms = 12000) {
     const ctrl = new AbortController();
@@ -222,7 +227,7 @@ const APIs = (() => {
       authors: (s.authors || []).join(", "),
       cover_url: capa,
       synopsis: limpaHTML(s.description),
-      genres: (s.genres || []).map((g) => String(g).replace(/_/g, " ")),  // school_life → school life
+      genres: (s.genres || []).map(capGenero),   // school_life → School Life
       total_pages: null,
       total_chapters: Number.isFinite(nch) && nch > 0 ? nch : null,
       total_volumes: Number.isFinite(nvol) && nvol > 0 ? nvol : null,
