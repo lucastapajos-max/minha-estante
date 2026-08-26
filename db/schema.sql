@@ -31,7 +31,7 @@ create table if not exists items (
   notes          text default '',
   genres         text[] default '{}',
   source         text default 'manual'
-                   check (source in ('google_books','jikan','manual')),
+                   check (source in ('google_books','jikan','anilist','mangabaka','manual')),
   external_id    text default '',
   -- notificação de novos capítulos (mangás em andamento)
   notify         boolean not null default false,   -- sino ligado?

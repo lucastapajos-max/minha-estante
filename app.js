@@ -848,17 +848,23 @@
         div.querySelector(".res-add").addEventListener("click", async (ev) => {
           const btn = ev.currentTarget;
           const item = { ...r, kind: ui.kind, status: "quero_ler" };
-          // mangá em andamento sem total? tenta descobrir os capítulos lançados na MangaBaka
-          if (ui.kind === "manga" && !item.total_chapters) {
-            btn.disabled = true; btn.textContent = "…";
-            const info = await APIs.capitulosLancados(item.title, item.mangabaka_id);
-            if (info.ultimo) item.total_chapters = info.ultimo;
-            if (info.mangabaka_id) item.mangabaka_id = info.mangabaka_id;
+          btn.disabled = true; btn.textContent = "…";
+          try {
+            // mangá em andamento sem total? descobre os capítulos lançados na MangaBaka
+            if (ui.kind === "manga" && !item.total_chapters) {
+              const info = await APIs.capitulosLancados(item.title, item.mangabaka_id);
+              if (info.ultimo) item.total_chapters = info.ultimo;
+              if (info.mangabaka_id) item.mangabaka_id = info.mangabaka_id;
+            }
+            await Store.add(item);
+            $("modal-add").hidden = true;
+            toast(item.total_chapters ? `Adicionado ✓ (${item.total_chapters} caps lançados)` : "Adicionado à estante ✓");
+            renderBiblioteca();
+          } catch (err) {
+            console.warn("Falha ao adicionar:", err);
+            btn.disabled = false; btn.textContent = "Adicionar";
+            toast("Não consegui salvar. Tente de novo.");
           }
-          await Store.add(item);
-          $("modal-add").hidden = true;
-          toast(item.total_chapters ? `Adicionado ✓ (${item.total_chapters} caps lançados)` : "Adicionado à estante ✓");
-          renderBiblioteca();
         });
         box.appendChild(div);
       });
