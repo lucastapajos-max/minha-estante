@@ -168,6 +168,7 @@ const APIs = (() => {
       total_chapters: m.chapters || null,
       total_volumes: m.volumes || null,
       source: "jikan", external_id: String(m.mal_id || ""),
+      release_status: m.status || "",   // Finished | Publishing | On Hiatus…
     }));
   }
 
@@ -179,6 +180,7 @@ const APIs = (() => {
           id title { english romaji }
           coverImage { large }
           description(asHtml: false)
+          status
           chapters volumes genres
           staff(perPage: 2) { nodes { name { full } } }
         }
@@ -202,6 +204,7 @@ const APIs = (() => {
       total_chapters: m.chapters || null,
       total_volumes: m.volumes || null,
       source: "jikan", external_id: String(m.id || ""),
+      release_status: m.status || "",   // RELEASING | FINISHED | HIATUS…
     }));
   }
 
@@ -225,6 +228,7 @@ const APIs = (() => {
       total_volumes: Number.isFinite(nvol) && nvol > 0 ? nvol : null,
       source: "mangabaka", external_id: String(s.id || ""),
       mangabaka_id: String(s.id || ""),
+      release_status: s.status || "",   // releasing | completed | hiatus | cancelled…
     };
   }
   async function mangabakaBuscar(termo) {

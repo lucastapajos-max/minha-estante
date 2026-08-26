@@ -103,6 +103,18 @@
     const d = new Date(); const p = (n) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
   };
+
+  // status de lançamento da obra (vindo da MangaBaka/Jikan/AniList) → badge
+  function statusObra(raw) {
+    const s = String(raw || "").toLowerCase();
+    if (!s) return null;
+    if (/(releasing|publishing|ongoing|current)/.test(s)) return { label: "Em lançamento", cls: "releasing" };
+    if (/(completed|finished)/.test(s))                    return { label: "Finalizado", cls: "finished" };
+    if (/hiatus/.test(s))                                  return { label: "Em hiato", cls: "hiatus" };
+    if (/(cancel|discontin)/.test(s))                      return { label: "Cancelado", cls: "cancelled" };
+    if (/(not[_ ]?yet|upcoming|não lançad)/.test(s))       return { label: "Não lançado", cls: "upcoming" };
+    return null;
+  }
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -839,16 +851,24 @@
         const meta = r.total_pages ? `${r.total_pages} págs`
           : r.total_chapters ? `${r.total_chapters} caps`
           : r.total_volumes ? `${r.total_volumes} vols` : "";
+        const st = statusObra(r.release_status);
+        const badge = st ? `<span class="obra-status ${st.cls}">${st.label}</span>` : "";
         div.innerHTML = `${capa}
           <div class="res-corpo">
             <div class="res-titulo">${esc(r.title)}</div>
-            <div class="res-sub">${esc(r.authors) || "Autor desconhecido"}${meta ? " · " + meta : ""}</div>
+            <div class="res-sub">${esc(r.authors) || "Autor desconhecido"}${meta ? " · " + meta : ""}${badge}</div>
           </div>
           <button class="btn-primary res-add">Adicionar</button>`;
-        div.querySelector(".res-add").addEventListener("click", async (ev) => {
-          const btn = ev.currentTarget;
-          const item = { ...r, kind: ui.kind, status: "quero_ler" };
-          btn.disabled = true; btn.textContent = "…";
+
+        // grava o item com o status escolhido (lendo / quero ler / concluído)
+        async function adicionarCom(status, pick, chip) {
+          const orig = chip.textContent;
+          const item = { ...r, kind: ui.kind, status };
+          // datas automáticas conforme o status (mesma convenção do resto do app)
+          if (status === "lendo") item.started_at = item.started_at || hojeISO();
+          if (status === "lido") { item.finished_at = item.finished_at || hojeISO(); item.started_at = item.started_at || hojeISO(); }
+          pick.querySelectorAll("button").forEach((b) => (b.disabled = true));
+          chip.textContent = "…";
           try {
             // mangá em andamento sem total? descobre os capítulos lançados na MangaBaka
             if (ui.kind === "manga" && !item.total_chapters) {
@@ -858,13 +878,29 @@
             }
             await Store.add(item);
             $("modal-add").hidden = true;
+            // mostra o item recém-criado na visão certa (evita "sumir" na aba Lendo)
+            ui.status = status; $("filtro-status").value = status;
             toast(item.total_chapters ? `Adicionado ✓ (${item.total_chapters} caps lançados)` : "Adicionado à estante ✓");
             renderBiblioteca();
           } catch (err) {
             console.warn("Falha ao adicionar:", err);
-            btn.disabled = false; btn.textContent = "Adicionar";
+            pick.querySelectorAll("button").forEach((b) => (b.disabled = false));
+            chip.textContent = orig;
             toast("Não consegui salvar. Tente de novo.");
           }
+        }
+
+        div.querySelector(".res-add").addEventListener("click", (ev) => {
+          const btn = ev.currentTarget;
+          const pick = document.createElement("div");
+          pick.className = "res-status-pick";
+          pick.innerHTML =
+            `<button data-st="lendo">Lendo</button>` +
+            `<button data-st="quero_ler">Quero ler</button>` +
+            `<button data-st="lido">Concluído</button>`;
+          btn.replaceWith(pick);
+          pick.querySelectorAll("button").forEach((chip) =>
+            chip.addEventListener("click", () => adicionarCom(chip.dataset.st, pick, chip)));
         });
         box.appendChild(div);
       });

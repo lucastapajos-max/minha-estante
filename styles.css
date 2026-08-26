@@ -273,6 +273,20 @@ label.campo { display: block; margin: 12px 0 5px; font-size: 13px; color: var(--
 .res-titulo { font-weight: 600; font-size: 14px; }
 .res-sub { font-size: 12.5px; color: var(--txt-fraco); margin-top: 2px; }
 .res-add { align-self: center; }
+
+/* badge de status da obra (releasing/finished…) nos resultados de busca */
+.obra-status { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; margin-left: 6px; white-space: nowrap; vertical-align: middle; border: 1px solid transparent; }
+.obra-status.releasing { color: #3fb950; background: rgba(63,185,80,.14); border-color: rgba(63,185,80,.35); }
+.obra-status.finished  { color: #a371f7; background: rgba(163,113,247,.16); border-color: rgba(163,113,247,.38); }
+.obra-status.hiatus    { color: #d29922; background: rgba(210,153,34,.14); border-color: rgba(210,153,34,.35); }
+.obra-status.cancelled { color: #f85149; background: rgba(248,81,73,.13); border-color: rgba(248,81,73,.32); }
+.obra-status.upcoming  { color: var(--txt-fraco); background: var(--bg-card-2); border-color: var(--linha); }
+
+/* seletor de status ao adicionar um resultado (lendo / quero ler / concluído) */
+.res-status-pick { align-self: center; display: flex; flex-direction: column; gap: 4px; flex: 0 0 auto; }
+.res-status-pick button { font-size: 12px; font-weight: 600; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--linha); background: var(--bg-card); color: var(--txt); cursor: pointer; white-space: nowrap; transition: background .1s, border-color .1s, color .1s; }
+.res-status-pick button:hover:not(:disabled) { background: var(--acento); border-color: var(--acento); color: #14110c; }
+.res-status-pick button:disabled { opacity: .55; cursor: default; }
 .edit-capa-preview { width: 70px; height: 105px; object-fit: cover; border-radius: 8px; background: var(--bg-card-2); display: block; }
 .capa-acoes { display: flex; align-items: flex-end; gap: 12px; margin-top: 8px; }
 .capas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px; margin-top: 10px; }
