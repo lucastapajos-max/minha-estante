@@ -222,7 +222,7 @@ const APIs = (() => {
       authors: (s.authors || []).join(", "),
       cover_url: capa,
       synopsis: limpaHTML(s.description),
-      genres: s.genres || [],
+      genres: (s.genres || []).map((g) => String(g).replace(/_/g, " ")),  // school_life → school life
       total_pages: null,
       total_chapters: Number.isFinite(nch) && nch > 0 ? nch : null,
       total_volumes: Number.isFinite(nvol) && nvol > 0 ? nvol : null,

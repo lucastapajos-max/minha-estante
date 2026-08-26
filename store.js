@@ -54,6 +54,8 @@ const Store = (() => {
     if (!row) return row;
     if (row.rating != null) row.rating = Number(row.rating);
     if (!Array.isArray(row.genres)) row.genres = row.genres || [];
+    // gêneros vindos de algumas fontes usam underscore (school_life) → espaço
+    row.genres = row.genres.map((g) => (typeof g === "string" ? g.replace(/_/g, " ") : g));
     return row;
   }
 
