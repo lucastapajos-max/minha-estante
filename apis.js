@@ -5,8 +5,9 @@
      1º Google Books  (dados ricos: páginas, sinopse, categorias)
      2º Open Library  (reserva grátis, SEM cota, se o Google falhar)
    Mangás:
-     1º Jikan/MyAnimeList
-     2º AniList (GraphQL, reserva SEM chave, se o Jikan falhar)
+     1º MangaBaka (open source, capítulos em tempo real, capa, sinopse)
+     2º Jikan/MyAnimeList  (reserva, se a MangaBaka cair)
+     3º AniList (GraphQL, reserva SEM chave)
 
    Toda busca devolve uma lista NORMALIZADA no mesmo formato,
    pronta para virar um item do Store:
@@ -204,54 +205,75 @@ const APIs = (() => {
     }));
   }
 
+  // ---------- MangaBaka: busca de obras (fonte primária de mangá) ----------
+  // Open source, atualizado com frequência, rastreia capítulo a capítulo.
+  // A própria busca já traz título, autor, capa, sinopse, gêneros, total de
+  // capítulos/volumes E o id — então o item já nasce completo, sem passo extra.
+  function mapMangabaka(s) {
+    const cov = s.cover || {};
+    const capa = (cov.x350 && cov.x350.x1) || (cov.x250 && cov.x250.x1) || (cov.raw && cov.raw.url) || "";
+    const nch = Math.floor(parseFloat(s.total_chapters));
+    const nvol = Math.floor(parseFloat(s.final_volume));
+    return {
+      title: s.title || "Sem título",
+      authors: (s.authors || []).join(", "),
+      cover_url: capa,
+      synopsis: limpaHTML(s.description),
+      genres: s.genres || [],
+      total_pages: null,
+      total_chapters: Number.isFinite(nch) && nch > 0 ? nch : null,
+      total_volumes: Number.isFinite(nvol) && nvol > 0 ? nvol : null,
+      source: "mangabaka", external_id: String(s.id || ""),
+      mangabaka_id: String(s.id || ""),
+    };
+  }
+  async function mangabakaBuscar(termo) {
+    const r = await fetchT("https://api.mangabaka.org/v1/series/search?limit=12&q=" + encodeURIComponent(termo));
+    if (!r.ok) throw new Error("mangabaka " + r.status);
+    const j = await r.json();
+    return (j.data || []).map(mapMangabaka);
+  }
+
   async function buscarMangas(termo) {
     try {
-      const j = await jikanManga(termo);
+      const mb = await mangabakaBuscar(termo);
+      if (mb.length) return mb;
+    } catch {}
+    try {
+      const j = await jikanManga(termo);   // reserva 1
       if (j.length) return j;
-      return await anilistManga(termo);  // Jikan vazio → reserva
-    } catch {
-      return await anilistManga(termo);  // Jikan falhou (ex.: 504) → reserva
-    }
+    } catch {}
+    try { return await anilistManga(termo); } catch { return []; }  // reserva 2
   }
 
-  // ---------- MangaDex: id + último capítulo lançado ----------
+  // ---------- MangaBaka: id + último capítulo lançado ----------
   // Jikan/AniList deixam o total vazio enquanto a obra está em andamento.
-  // A MangaDex rastreia capítulo a capítulo, então dá pra descobrir quantos
-  // já saíram. Retorna { id, ultimo } ou null.
-  async function mangadexInfo(titulo) {
+  // A MangaBaka rastreia capítulo a capítulo (inclusive de mangás licenciados),
+  // então dá pra descobrir quantos já saíram. Retorna { id, ultimo } ou null.
+  async function mangabakaInfo(titulo, id) {
     try {
-      const s = await fetchT("https://api.mangadex.org/manga?limit=1&title=" + encodeURIComponent(titulo));
-      if (!s.ok) return null;
-      const sj = await s.json();
-      const m = sj.data && sj.data[0];
-      if (!m) return null;
-      const c = await fetchT(`https://api.mangadex.org/chapter?manga=${m.id}&limit=1&order[chapter]=desc`);
-      if (!c.ok) return { id: m.id, ultimo: null };
-      const cj = await c.json();
-      const cap = cj.data && cj.data[0] && cj.data[0].attributes.chapter;
-      const n = Math.floor(parseFloat(cap));
-      return { id: m.id, ultimo: Number.isFinite(n) && n > 0 ? n : null };
-    } catch {
-      return null;
-    }
-  }
-  // atalho: só o número do último capítulo (mantém compatibilidade)
-  async function mangadexUltimoCapitulo(titulo) {
-    const info = await mangadexInfo(titulo);
-    return info ? info.ultimo : null;
+      let serie = null;
+      if (id) {
+        const r = await fetchT(`https://api.mangabaka.org/v1/series/${id}`);
+        if (r.ok) serie = (await r.json()).data;
+      }
+      if (!serie) {
+        const r = await fetchT("https://api.mangabaka.org/v1/series/search?limit=1&q=" + encodeURIComponent(titulo));
+        if (!r.ok) return null;
+        serie = ((await r.json()).data || [])[0];
+      }
+      if (!serie) return null;
+      const n = Math.floor(parseFloat(serie.total_chapters));
+      return { id: String(serie.id), ultimo: Number.isFinite(n) && n > 0 ? n : null };
+    } catch { return null; }
   }
 
-  // ---------- MangaDex: capa (arte) por título ----------
-  async function mangadexCapa(termo) {
-    try {
-      const s = await fetchT("https://api.mangadex.org/manga?limit=1&includes[]=cover_art&title=" + encodeURIComponent(termo));
-      if (!s.ok) return null;
-      const m = (await s.json()).data?.[0];
-      if (!m) return null;
-      const cover = (m.relationships || []).find((r) => r.type === "cover_art");
-      const file = cover && cover.attributes && cover.attributes.fileName;
-      return file ? `https://uploads.mangadex.org/covers/${m.id}/${file}.512.jpg` : null;
-    } catch { return null; }
+  // #capítulos: número do último capítulo lançado via MangaBaka.
+  // Retorna { ultimo, mangabaka_id }.
+  async function capitulosLancados(titulo, mangabakaId) {
+    const mb = await mangabakaInfo(titulo, mangabakaId);
+    if (mb && mb.ultimo) return { ultimo: mb.ultimo, mangabaka_id: mb.id };
+    return { ultimo: null, mangabaka_id: (mb && mb.id) || mangabakaId || "" };
   }
 
   // #5 opções de capa de TODAS as fontes usadas (dedup, sem vazias)
@@ -260,9 +282,9 @@ const APIs = (() => {
     const push = (u) => { if (u && typeof u === "string") urls.add(u); };
     if (kind === "manga") {
       await Promise.all([
+        mangabakaBuscar(termo).then((rs) => rs.forEach((r) => push(r.cover_url))).catch(() => {}),
         jikanManga(termo).then((rs) => rs.forEach((r) => push(r.cover_url))).catch(() => {}),
         anilistManga(termo).then((rs) => rs.forEach((r) => push(r.cover_url))).catch(() => {}),
-        mangadexCapa(termo).then((u) => push(u)).catch(() => {}),
       ]);
     } else {
       const isbn = extrairISBN(termo);
@@ -286,5 +308,6 @@ const APIs = (() => {
   }
 
   return { buscar, googleBooks, openLibrary, jikanManga, anilistManga,
-           mangadexInfo, mangadexUltimoCapitulo, buscarISBN, extrairISBN, buscarCapas };
+           mangabakaBuscar, mangabakaInfo, capitulosLancados,
+           buscarISBN, extrairISBN, buscarCapas };
 })();

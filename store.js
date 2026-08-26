@@ -40,7 +40,7 @@ const Store = (() => {
       source: item.source || "manual",
       external_id: item.external_id || "",
       notify: item.notify ?? false,
-      mangadex_id: item.mangadex_id || "",
+      mangabaka_id: item.mangabaka_id || "",
       last_notified_chapter: item.last_notified_chapter ?? null,
       started_at: item.started_at ?? null,
       finished_at: item.finished_at ?? null,

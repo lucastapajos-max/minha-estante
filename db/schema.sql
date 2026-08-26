@@ -35,7 +35,8 @@ create table if not exists items (
   external_id    text default '',
   -- notificação de novos capítulos (mangás em andamento)
   notify         boolean not null default false,   -- sino ligado?
-  mangadex_id    text default '',                  -- id na MangaDex (pro robô consultar)
+  mangadex_id    text default '',                  -- legado (MangaDex desativada; mantido p/ não quebrar dados antigos)
+  mangabaka_id   text default '',                  -- id na MangaBaka (fonte primária de capítulos)
   last_notified_chapter int,                       -- último capítulo já avisado
   -- datas de leitura + formato + coleção (features de UX)
   started_at     date,

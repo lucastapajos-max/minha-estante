@@ -3,7 +3,7 @@
 Robô das notificações da Estante.
 Roda no GitHub Actions de tempos em tempos:
   1. lê no Supabase os mangás com o sino ligado (notify = true)
-  2. consulta a MangaDex o último capítulo lançado de cada um
+  2. consulta a MangaBaka o último capítulo lançado de cada um
   3. se saiu capítulo novo, manda um push pra cada dispositivo inscrito
   4. atualiza o "último capítulo avisado" pra não repetir
 
@@ -51,31 +51,32 @@ def sb_delete(path):
     requests.delete(f"{SUPABASE_URL}/rest/v1/{path}", headers=SB_HEADERS, timeout=30)
 
 
-def mangadex_ultimo(mangadex_id, titulo):
-    """Último capítulo lançado (inteiro) ou None."""
+def mangabaka_ultimo(mangabaka_id, titulo):
+    """Último capítulo lançado (inteiro) ou None. Retorna (id, ultimo)."""
+    def _caps(serie):
+        try:
+            return int(float(serie.get("total_chapters")))
+        except (TypeError, ValueError):
+            return None
     try:
-        mid = mangadex_id
-        if not mid:
-            s = requests.get("https://api.mangadex.org/manga",
-                             params={"limit": 1, "title": titulo}, timeout=30)
+        mid = mangabaka_id
+        serie = None
+        if mid:
+            r = requests.get(f"https://api.mangabaka.org/v1/series/{mid}", timeout=30)
+            if r.ok:
+                serie = r.json().get("data")
+        if not serie:
+            s = requests.get("https://api.mangabaka.org/v1/series/search",
+                             params={"limit": 1, "q": titulo}, timeout=30)
             data = s.json().get("data", [])
             if not data:
-                return None, None
-            mid = data[0]["id"]
-        c = requests.get("https://api.mangadex.org/chapter",
-                         params={"manga": mid, "limit": 1, "order[chapter]": "desc"},
-                         timeout=30)
-        arr = c.json().get("data", [])
-        if not arr:
-            return mid, None
-        cap = arr[0]["attributes"].get("chapter")
-        try:
-            return mid, int(float(cap))
-        except (TypeError, ValueError):
-            return mid, None
+                return mid, None
+            serie = data[0]
+            mid = str(serie.get("id") or mid or "")
+        return mid, _caps(serie)
     except Exception as e:
-        print(f"  ! erro MangaDex ({titulo}): {e}")
-        return mangadex_id, None
+        print(f"  ! erro MangaBaka ({titulo}): {e}")
+        return mangabaka_id, None
 
 
 def enviar_push(sub, payload):
@@ -102,19 +103,19 @@ def enviar_push(sub, payload):
 
 def main():
     itens = sb_get("items?notify=eq.true&kind=eq.manga"
-                   "&select=id,user_id,title,mangadex_id,last_notified_chapter")
+                   "&select=id,user_id,title,mangabaka_id,last_notified_chapter")
     print(f"{len(itens)} mangá(s) vigiado(s).")
     for it in itens:
         titulo = it["title"]
         ultimo_avisado = it.get("last_notified_chapter") or 0
-        mid, ultimo = mangadex_ultimo(it.get("mangadex_id"), titulo)
-        time.sleep(0.4)  # respeita o rate limit da MangaDex
+        mid, ultimo = mangabaka_ultimo(it.get("mangabaka_id"), titulo)
+        time.sleep(0.4)  # gentileza com a API da MangaBaka
         if ultimo is None:
             print(f"- {titulo}: sem dado de capítulo, pulando.")
             continue
-        # guarda o id da MangaDex se ainda não tínhamos
-        if mid and not it.get("mangadex_id"):
-            sb_patch(f"items?id=eq.{it['id']}", {"mangadex_id": mid})
+        # guarda o id da MangaBaka se ainda não tínhamos
+        if mid and not it.get("mangabaka_id"):
+            sb_patch(f"items?id=eq.{it['id']}", {"mangabaka_id": mid})
         if ultimo <= ultimo_avisado:
             print(f"- {titulo}: cap {ultimo} (já avisado até {ultimo_avisado}).")
             continue

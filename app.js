@@ -848,11 +848,12 @@
         div.querySelector(".res-add").addEventListener("click", async (ev) => {
           const btn = ev.currentTarget;
           const item = { ...r, kind: ui.kind, status: "quero_ler" };
-          // mangá em andamento sem total? tenta descobrir os capítulos lançados na MangaDex
+          // mangá em andamento sem total? tenta descobrir os capítulos lançados na MangaBaka
           if (ui.kind === "manga" && !item.total_chapters) {
             btn.disabled = true; btn.textContent = "…";
-            const cap = await APIs.mangadexUltimoCapitulo(item.title);
-            if (cap) item.total_chapters = cap;
+            const info = await APIs.capitulosLancados(item.title, item.mangabaka_id);
+            if (info.ultimo) item.total_chapters = info.ultimo;
+            if (info.mangabaka_id) item.mangabaka_id = info.mangabaka_id;
           }
           await Store.add(item);
           $("modal-add").hidden = true;
@@ -1344,19 +1345,22 @@
     if (fFim) fFim.addEventListener("change", (e) =>
       Store.update(id, { finished_at: e.target.value || null }));
 
-    // --- detectar capítulos lançados (MangaDex) ---
+    // --- detectar capítulos lançados (MangaBaka) ---
     const btnDet = $("f-detectar");
     if (btnDet) btnDet.addEventListener("click", async () => {
       btnDet.innerHTML = ico("refresh", 14) + " buscando…"; btnDet.disabled = true;
-      const cap = await APIs.mangadexUltimoCapitulo(it.title);
+      const info = await APIs.capitulosLancados(it.title, it.mangabaka_id);
       btnDet.disabled = false;
       btnDet.innerHTML = ico("refresh", 14) + " detectar lançados";
-      if (cap) {
-        $("f-tot").value = cap;
+      if (info.ultimo) {
+        $("f-tot").value = info.ultimo;
         await salvarProg();
-        toast(`Último lançado: capítulo ${cap}`);
+        // guarda o id da MangaBaka pra próximas consultas / robô
+        await Store.update(id, { mangabaka_id: info.mangabaka_id });
+        it.mangabaka_id = info.mangabaka_id;
+        toast(`Último lançado: capítulo ${info.ultimo}`);
       } else {
-        toast("Não encontrei na MangaDex — preencha manualmente");
+        toast("Não encontrei — preencha manualmente");
       }
     });
 
@@ -1373,12 +1377,12 @@
       btnNotify.disabled = true; btnNotify.textContent = "Ativando…";
       const ok = await assinarPush();
       if (!ok) { abrirFicha(id); return; }
-      // baseline: id e último capítulo na MangaDex (só avisa dos PRÓXIMOS)
-      const info = await APIs.mangadexInfo(it.title);
-      const baseline = (info && info.ultimo) || it.total_chapters || it.current_chapter || 0;
+      // baseline: último capítulo lançado (MangaBaka). Só avisa dos PRÓXIMOS.
+      const info = await APIs.capitulosLancados(it.title, it.mangabaka_id);
+      const baseline = info.ultimo || it.total_chapters || it.current_chapter || 0;
       await Store.update(id, {
         notify: true,
-        mangadex_id: (info && info.id) || "",
+        mangabaka_id: info.mangabaka_id,
         last_notified_chapter: baseline,
       });
       it.notify = true;
