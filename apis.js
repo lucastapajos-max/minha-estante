@@ -231,11 +231,19 @@ const APIs = (() => {
       release_status: s.status || "",   // releasing | completed | hiatus | cancelled…
     };
   }
+  // esconde versões eróticas/fan-made (doujinshi, hentai, pornográfico).
+  // NÃO filtra ecchi/mature/suggestive — isso é o mangá oficial (ex.: Dandadan).
+  function serieAdulta(s) {
+    const cr = String(s.content_rating || "").toLowerCase();
+    if (cr === "pornographic" || cr === "erotica") return true;
+    const g = (s.genres || []).map((x) => String(x).toLowerCase());
+    return g.includes("hentai") || g.includes("doujinshi");
+  }
   async function mangabakaBuscar(termo) {
-    const r = await fetchT("https://api.mangabaka.org/v1/series/search?limit=12&q=" + encodeURIComponent(termo));
+    const r = await fetchT("https://api.mangabaka.org/v1/series/search?limit=20&q=" + encodeURIComponent(termo));
     if (!r.ok) throw new Error("mangabaka " + r.status);
     const j = await r.json();
-    return (j.data || []).map(mapMangabaka);
+    return (j.data || []).filter((s) => !serieAdulta(s)).map(mapMangabaka).slice(0, 12);
   }
 
   async function buscarMangas(termo) {
