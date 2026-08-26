@@ -1215,16 +1215,18 @@
           <span class="prog-sep">páginas</span>
         </div>`;
     } else {
+      // "detectar lançados" usa a MangaBaka → só faz sentido em mangá
+      const dicaDetectar = it.kind === "manga" ? `
+        <div class="prog-dica">
+          Em andamento? Use o total de capítulos já <b>lançados</b>.
+          <button class="link-btn ico-btn" id="f-detectar" type="button">${ico("refresh", 14)} detectar lançados</button>
+        </div>` : "";
       progBloco = `<div class="prog-linha">
           <input class="input" id="f-cur" type="number" inputmode="numeric" value="${it.current_chapter || 0}">
           <span class="prog-sep">de</span>
           <input class="input" id="f-tot" type="number" inputmode="numeric" value="${it.total_chapters || ""}" placeholder="total">
           <span class="prog-sep">capítulos</span>
-        </div>
-        <div class="prog-dica">
-          Em andamento? Use o total de capítulos já <b>lançados</b>.
-          <button class="link-btn ico-btn" id="f-detectar" type="button">${ico("refresh", 14)} detectar lançados</button>
-        </div>
+        </div>${dicaDetectar}
         <div class="prog-linha">
           <input class="input" id="f-curv" type="number" inputmode="numeric" value="${it.current_volume || 0}">
           <span class="prog-sep">de</span>
