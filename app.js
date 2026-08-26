@@ -811,7 +811,7 @@
     $("add-resultados").innerHTML = "";
     $("add-titulo").textContent = "Adicionar — " + KIND[ui.kind].label;
     $("add-hint").textContent = ui.kind === "manga"
-      ? "Buscando em Jikan / MyAnimeList."
+      ? "Buscando na MangaBaka."
       : "Edições em português primeiro. Dica: cole um ISBN (10 ou 13 dígitos) pra busca exata.";
     $("add-input").placeholder = ui.kind === "manga"
       ? "Buscar mangá por título…"

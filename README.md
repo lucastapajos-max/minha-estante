@@ -21,7 +21,7 @@ Abra <http://localhost:5500> no navegador.
 | `index.html` | Estrutura das telas (abas, biblioteca, modais) |
 | `styles.css` | Visual (tema escuro "de estante") |
 | `store.js` | **Camada de dados isolada.** Hoje: `localStorage`. Marco 2: Supabase |
-| `apis.js` | Busca externa: Google Books (livros/quadrinhos) e Jikan (mangás) |
+| `apis.js` | Busca externa: Google Books (livros/quadrinhos) e MangaBaka (mangás) |
 | `app.js` | Lógica da interface |
 | `sw.js` + `manifest.webmanifest` | PWA (instalável, funciona offline) |
 | `db/schema.sql` | Schema do banco para o Marco 2 (Supabase + RLS) |
