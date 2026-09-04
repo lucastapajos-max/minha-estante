@@ -70,7 +70,10 @@
     <!-- ===== Abas por categoria ===== -->
     <nav class="tabs" id="tabs">
       <button class="tab is-active" data-kind="livro">Livros</button>
-      <button class="tab" data-kind="quadrinho">Quadrinhos</button>
+      <!-- aba Quadrinhos ocultada a pedido do usuário (não usa). Toda a lógica
+           continua no código; pra reativar, tire o `hidden` daqui e a guarda
+           em restaurarNav() no app.js. -->
+      <button class="tab" data-kind="quadrinho" hidden>Quadrinhos</button>
       <button class="tab" data-kind="manga">Mangás</button>
     </nav>
 

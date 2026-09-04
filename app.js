@@ -1673,6 +1673,8 @@
     const VIEWS = ["grid", "list"];
     const TELAS = ["biblioteca", "stats", "historico"];
     ui.kind = KINDS.includes(nav.kind) ? nav.kind : "livro";
+    // aba Quadrinhos está oculta (ver index.html) → não retoma nela; pra reativar, remova esta linha
+    if (ui.kind === "quadrinho") ui.kind = "livro";
     ui.status = STATUS.includes(nav.status) ? nav.status : "lendo";
     ui.view = VIEWS.includes(nav.view) ? nav.view : "grid";
     ui.ordem = nav.ordem || "recentes";
