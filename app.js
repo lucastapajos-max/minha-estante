@@ -88,7 +88,7 @@
     { id: "light",  nome: "Creme",  claro: true,  meta: "#f7f2e9", sw: "#f7f2e9", ac: "#c17d2a" },
     { id: "branco", nome: "Branco", claro: true,  meta: "#ffffff", sw: "#ffffff", ac: "#c17d2a" },
     { id: "dark",   nome: "Âmbar",  claro: false, meta: "#16130f", sw: "#16130f", ac: "#e0a458" },
-    { id: "chumbo", nome: "Chumbo", claro: false, meta: "#17181a", sw: "#20232a", ac: "#e0a458" },
+    { id: "chumbo", nome: "Chumbo", claro: false, meta: "#17181a", sw: "#20232a", ac: "#c3c8ce" },
   ];
   const infoTema = (id) => TEMAS.find((t) => t.id === id) || TEMAS[2];
   const temaAtual = () => {

@@ -65,7 +65,7 @@
   --st-abandonado: #d1544a;
 }
 
-/* ===== Tema chumbo (escuro neutro) ===== */
+/* ===== Tema chumbo (escuro neutro, acento cinza) ===== */
 :root[data-theme="chumbo"] {
   --bg:        #17181a;
   --bg-card:   #202225;
@@ -74,8 +74,8 @@
   --txt:       #eceef1;
   --txt-suave: #adb2b9;
   --txt-fraco: #71767d;
-  --acento:    #e0a458;
-  --acento-2:  #f0c07a;
+  --acento:    #c3c8ce;   /* cinza claro no lugar do âmbar (combina com o chumbo) */
+  --acento-2:  #dee1e5;
   --sombra:    0 8px 24px rgba(0,0,0,.4);
 
   --st-lendo:      #4ea1ff;
@@ -160,6 +160,8 @@ input { font-family: inherit; }
   transition: filter .15s, transform .05s;
 }
 .btn-primary:hover { filter: brightness(1.06); }
+/* no tema chumbo o acento é cinza claro → texto do botão em tom neutro escuro */
+:root[data-theme="chumbo"] .btn-primary { color: #17181a; }
 .btn-primary:active { transform: scale(.97); }
 .btn-ghost {
   background: transparent; color: var(--txt-suave);
