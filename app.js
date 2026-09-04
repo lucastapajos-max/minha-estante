@@ -335,7 +335,9 @@
   }
 
   // troca entre as abas do menu inferior (biblioteca / estatísticas / histórico)
+  let telaAtual = "biblioteca";
   async function mostrarView(view) {
+    telaAtual = view;
     $("view-biblioteca").hidden = view !== "biblioteca";
     $("view-stats").hidden = view !== "stats";
     $("view-historico").hidden = view !== "historico";
@@ -345,6 +347,12 @@
     window.scrollTo(0, 0);
     if (view === "stats") await renderStats();
     if (view === "historico") await renderHistorico();
+  }
+  // rebusca os dados da tela atual (sem trocar de view)
+  function atualizarTelaAtual() {
+    if (telaAtual === "stats") return renderStats();
+    if (telaAtual === "historico") return renderHistorico();
+    return renderBiblioteca();
   }
 
   // ============================================================
@@ -1640,6 +1648,14 @@
     window.addEventListener("online", atualizarOffline);
     window.addEventListener("offline", atualizarOffline);
     atualizarOffline();
+
+    // ao voltar pro app (ex.: clicou na notificação de capítulo novo), rebusca a
+    // tela atual — pega o total já atualizado pelo robô e sincroniza entre aparelhos
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && !$("app").hidden && navigator.onLine) {
+        atualizarTelaAtual();
+      }
+    });
 
     // decide: login (nuvem sem sessão) → tranca biométrica → biblioteca
     let sessao = null;

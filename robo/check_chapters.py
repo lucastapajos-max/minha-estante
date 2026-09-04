@@ -103,7 +103,7 @@ def enviar_push(sub, payload):
 
 def main():
     itens = sb_get("items?notify=eq.true&kind=eq.manga"
-                   "&select=id,user_id,title,mangabaka_id,last_notified_chapter")
+                   "&select=id,user_id,title,mangabaka_id,last_notified_chapter,total_chapters")
     print(f"{len(itens)} mangá(s) vigiado(s).")
     for it in itens:
         titulo = it["title"]
@@ -121,6 +121,11 @@ def main():
             continue
 
         print(f"- {titulo}: NOVO capítulo {ultimo} (era {ultimo_avisado}) → notificando")
+        # atualiza o total na biblioteca JÁ (antes do push), pra o app não ficar
+        # defasado quando o usuário abrir. Só sobe, nunca diminui.
+        total_atual = it.get("total_chapters") or 0
+        if ultimo > total_atual:
+            sb_patch(f"items?id=eq.{it['id']}", {"total_chapters": ultimo})
         subs = sb_get(f"push_subscriptions?user_id=eq.{it['user_id']}"
                       "&select=id,endpoint,p256dh,auth")
         payload = {
