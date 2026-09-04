@@ -390,6 +390,7 @@
     document.querySelectorAll("#bottom-nav .bn-item").forEach((b) =>
       b.classList.toggle("is-active", b.dataset.view === view));
     window.scrollTo(0, 0);
+    salvarNav();
     if (view === "stats") await renderStats();
     if (view === "historico") await renderHistorico();
   }
@@ -933,7 +934,7 @@
             await Store.add(item);
             $("modal-add").hidden = true;
             // mostra o item recém-criado na visão certa (evita "sumir" na aba Lendo)
-            ui.status = status; $("filtro-status").value = status;
+            ui.status = status; $("filtro-status").value = status; salvarNav();
             toast(item.total_chapters ? `Adicionado ✓ (${item.total_chapters} caps lançados)` : "Adicionado à estante ✓");
             renderBiblioteca();
           } catch (err) {
@@ -1525,18 +1526,21 @@
         $("tabs").querySelector(".is-active").classList.remove("is-active");
         t.classList.add("is-active");
         ui.kind = t.dataset.kind;
+        salvarNav();
         renderBiblioteca();
       }));
 
     // filtro de status (dropdown #4)
     $("filtro-status").addEventListener("change", (e) => {
       ui.status = e.target.value;
+      salvarNav();
       renderBiblioteca();
     });
 
     // ordenação
     $("ordenar").addEventListener("change", (e) => {
       ui.ordem = e.target.value;
+      salvarNav();
       renderBiblioteca();
     });
 
@@ -1546,6 +1550,7 @@
         $("view-toggle").querySelector(".is-active").classList.remove("is-active");
         v.classList.add("is-active");
         ui.view = v.dataset.view;
+        salvarNav();
         renderBiblioteca();
       }));
 
@@ -1652,15 +1657,41 @@
     }
   }
 
+  // guarda/retoma a navegação (aba, filtro, ordem, grade/lista, tela) entre refreshs
+  function salvarNav() {
+    try {
+      localStorage.setItem("nav", JSON.stringify({
+        kind: ui.kind, status: ui.status, view: ui.view, ordem: ui.ordem, tela: telaAtual,
+      }));
+    } catch {}
+  }
+  function restaurarNav() {
+    let nav = {};
+    try { nav = JSON.parse(localStorage.getItem("nav")) || {}; } catch {}
+    const KINDS = ["livro", "quadrinho", "manga"];
+    const STATUS = ["todos", "lendo", "quero_ler", "lido", "pausado", "abandonado"];
+    const VIEWS = ["grid", "list"];
+    const TELAS = ["biblioteca", "stats", "historico"];
+    ui.kind = KINDS.includes(nav.kind) ? nav.kind : "livro";
+    ui.status = STATUS.includes(nav.status) ? nav.status : "lendo";
+    ui.view = VIEWS.includes(nav.view) ? nav.view : "grid";
+    ui.ordem = nav.ordem || "recentes";
+    // sincroniza a UI com o estado restaurado
+    $("tabs").querySelectorAll(".tab").forEach((t) => t.classList.toggle("is-active", t.dataset.kind === ui.kind));
+    $("filtro-status").value = ui.status;
+    $("ordenar").value = ui.ordem;
+    $("view-toggle").querySelectorAll(".vt").forEach((v) => v.classList.toggle("is-active", v.dataset.view === ui.view));
+    return TELAS.includes(nav.tela) ? nav.tela : "biblioteca";
+  }
+
   // mostra a biblioteca (usuário autenticado ou modo local)
   async function mostrarApp() {
     $("btn-sair").hidden = !Store.cloud;   // botão sair só na nuvem
     $("app").hidden = false;
     atualizarBotaoBio();                    // #8 mostra/atualiza o botão de biometria
-    // força o filtro padrão "Lendo" ao abrir (o navegador restaura o <select> antigo)
-    ui.status = "lendo";
-    $("filtro-status").value = "lendo";
+    const tela = restaurarNav();            // retoma aba/filtro/ordem/visão do último uso
     await renderBiblioteca();
+    if (tela !== "biblioteca") await mostrarView(tela);  // e sobe pra Estatísticas/Histórico se era o caso
   }
 
   // ============================================================
