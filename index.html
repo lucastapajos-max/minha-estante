@@ -13,7 +13,7 @@
   <script>
     (function () {
       var t = localStorage.getItem("tema");
-      if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+      if (["light", "branco", "dark", "chumbo"].indexOf(t) < 0) t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
       document.documentElement.setAttribute("data-theme", t);
     })();
   </script>
@@ -59,7 +59,7 @@
       </div>
       <div class="topbar-actions">
         <button class="btn-primary ico-btn" id="btn-adicionar"><span data-ico="plus" data-size="16"></span> Adicionar</button>
-        <button class="icon-btn" id="btn-tema" aria-label="Tema claro/escuro" title="Tema claro/escuro"></button>
+        <button class="icon-btn" id="btn-tema" aria-label="Escolher tema" title="Escolher tema"></button>
         <button class="icon-btn" id="btn-bio" aria-label="Bloqueio biométrico" title="Bloqueio biométrico" data-ico="unlock" hidden></button>
         <button class="icon-btn" id="btn-sair" aria-label="Sair" data-ico="logout" hidden></button>
       </div>

@@ -83,18 +83,63 @@
     });
   }
 
-  // ---------- tema claro/escuro ----------
-  const temaAtual = () => (document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark");
+  // ---------- temas (4 opções: 2 claros, 2 escuros) ----------
+  const TEMAS = [
+    { id: "light",  nome: "Creme",  claro: true,  meta: "#f7f2e9", sw: "#f7f2e9", ac: "#c17d2a" },
+    { id: "branco", nome: "Branco", claro: true,  meta: "#ffffff", sw: "#ffffff", ac: "#c17d2a" },
+    { id: "dark",   nome: "Âmbar",  claro: false, meta: "#16130f", sw: "#16130f", ac: "#e0a458" },
+    { id: "chumbo", nome: "Chumbo", claro: false, meta: "#17181a", sw: "#20232a", ac: "#e0a458" },
+  ];
+  const infoTema = (id) => TEMAS.find((t) => t.id === id) || TEMAS[2];
+  const temaAtual = () => {
+    const t = document.documentElement.getAttribute("data-theme");
+    return TEMAS.some((x) => x.id === t) ? t : "dark";
+  };
   function atualizarBotaoTema() {
     const btn = document.getElementById("btn-tema");
-    if (btn) btn.innerHTML = ico(temaAtual() === "dark" ? "sun" : "moon", 18);
+    if (btn) btn.innerHTML = ico(infoTema(temaAtual()).claro ? "sun" : "moon", 18);
   }
   function aplicarTema(t) {
     document.documentElement.setAttribute("data-theme", t);
     try { localStorage.setItem("tema", t); } catch {}
     const meta = document.getElementById("meta-theme");
-    if (meta) meta.content = t === "light" ? "#f7f2e9" : "#16130f";
+    if (meta) meta.content = infoTema(t).meta;
     atualizarBotaoTema();
+  }
+
+  // ---------- seletor de tema (popover) ----------
+  function fecharMenuTema() {
+    const m = document.getElementById("tema-menu");
+    if (m) m.remove();
+    document.removeEventListener("click", fecharTemaFora);
+    document.removeEventListener("keydown", escFecharTema);
+  }
+  function fecharTemaFora(e) {
+    if (!e.target.closest("#tema-menu") && !e.target.closest("#btn-tema")) fecharMenuTema();
+  }
+  function escFecharTema(e) { if (e.key === "Escape") fecharMenuTema(); }
+  function abrirMenuTema() {
+    if (document.getElementById("tema-menu")) { fecharMenuTema(); return; }
+    const btn = document.getElementById("btn-tema");
+    const atual = temaAtual();
+    const menu = document.createElement("div");
+    menu.className = "tema-menu"; menu.id = "tema-menu";
+    menu.innerHTML = TEMAS.map((t) => `
+      <button class="tema-op${t.id === atual ? " is-active" : ""}" data-tema="${t.id}">
+        <span class="tema-sw" style="background:${t.sw};border-color:${t.ac}"></span>
+        <span class="tema-nome">${t.nome}</span>
+        ${t.id === atual ? ico("check", 15) : ""}
+      </button>`).join("");
+    document.body.appendChild(menu);
+    const r = btn.getBoundingClientRect();
+    menu.style.top = (r.bottom + 8) + "px";
+    menu.style.right = Math.max(8, window.innerWidth - r.right) + "px";
+    menu.querySelectorAll(".tema-op").forEach((op) =>
+      op.addEventListener("click", () => { aplicarTema(op.dataset.tema); fecharMenuTema(); }));
+    setTimeout(() => {
+      document.addEventListener("click", fecharTemaFora);
+      document.addEventListener("keydown", escFecharTema);
+    }, 0);
   }
 
   // ---------- atalhos ----------
@@ -1566,7 +1611,7 @@
     });
 
     // tema claro/escuro
-    $("btn-tema").addEventListener("click", () => aplicarTema(temaAtual() === "dark" ? "light" : "dark"));
+    $("btn-tema").addEventListener("click", (e) => { e.stopPropagation(); abrirMenuTema(); });
 
     // #8 biometria
     $("btn-bio").addEventListener("click", async () => {
@@ -1627,6 +1672,7 @@
   async function boot() {
     pintarIcones();          // ícones flat estáticos
     atualizarBotaoTema();    // ícone sol/lua conforme o tema salvo
+    { const m = document.getElementById("meta-theme"); if (m) m.content = infoTema(temaAtual()).meta; }
     ligarEventos();
 
     // rede de segurança: qualquer falha assíncrona não tratada vira um aviso

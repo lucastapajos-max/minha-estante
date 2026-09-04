@@ -45,6 +45,46 @@
   --st-abandonado: #d1544a;
 }
 
+/* ===== Tema branco (claro neutro) ===== */
+:root[data-theme="branco"] {
+  --bg:        #f6f7f9;
+  --bg-card:   #ffffff;
+  --bg-card-2: #eceef1;
+  --linha:     #e2e5e9;
+  --txt:       #1a1d21;
+  --txt-suave: #565b62;
+  --txt-fraco: #9aa0a8;
+  --acento:    #c17d2a;
+  --acento-2:  #9a5f0f;
+  --sombra:    0 8px 24px rgba(20,26,34,.10);
+
+  --st-lendo:      #2f80d6;
+  --st-quero_ler:  #8a5cf0;
+  --st-lido:       #2e9e63;
+  --st-pausado:    #c17d2a;
+  --st-abandonado: #d1544a;
+}
+
+/* ===== Tema chumbo (escuro neutro) ===== */
+:root[data-theme="chumbo"] {
+  --bg:        #17181a;
+  --bg-card:   #202225;
+  --bg-card-2: #292c30;
+  --linha:     #34383d;
+  --txt:       #eceef1;
+  --txt-suave: #adb2b9;
+  --txt-fraco: #71767d;
+  --acento:    #e0a458;
+  --acento-2:  #f0c07a;
+  --sombra:    0 8px 24px rgba(0,0,0,.4);
+
+  --st-lendo:      #4ea1ff;
+  --st-quero_ler:  #b689ff;
+  --st-lido:       #59c98a;
+  --st-pausado:    #e0a458;
+  --st-abandonado: #e0736b;
+}
+
 * { box-sizing: border-box; }
 
 /* ===== Ícones flat (SVG monocromático) ===== */
@@ -273,6 +313,14 @@ label.campo { display: block; margin: 12px 0 5px; font-size: 13px; color: var(--
 .res-titulo { font-weight: 600; font-size: 14px; }
 .res-sub { font-size: 12.5px; color: var(--txt-fraco); margin-top: 2px; }
 .res-add { align-self: center; }
+
+/* ===== Seletor de tema (popover) ===== */
+.tema-menu { position: fixed; z-index: 300; background: var(--bg-card); border: 1px solid var(--linha); border-radius: var(--raio); box-shadow: var(--sombra); padding: 6px; min-width: 172px; display: flex; flex-direction: column; gap: 2px; }
+.tema-op { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--raio-sm); background: none; border: none; color: var(--txt); font-size: 14px; font-weight: 500; cursor: pointer; text-align: left; width: 100%; }
+.tema-op:hover { background: var(--bg-card-2); }
+.tema-op.is-active { color: var(--acento-2); font-weight: 600; }
+.tema-op .tema-nome { flex: 1; }
+.tema-sw { width: 18px; height: 18px; border-radius: 50%; border: 2px solid; flex: 0 0 auto; }
 
 /* badge de status da obra (releasing/finished…) nos resultados de busca */
 .obra-status { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; margin-top: 5px; white-space: nowrap; vertical-align: middle; border: 1px solid transparent; }
