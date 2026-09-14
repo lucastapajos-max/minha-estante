@@ -1,7 +1,7 @@
 /* Service worker — "rede primeiro" pro app.
    Online: sempre pega a versão fresca (e atualiza o cache).
    Offline: cai pro cache. Evita ficar preso em versão antiga. */
-const VERSAO = "estante-v48";
+const VERSAO = "estante-v49";
 const SHELL = [
   "./", "index.html", "styles.css",
   "config.js", "vendor/supabase.js",

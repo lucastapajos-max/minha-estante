@@ -29,6 +29,7 @@ const Store = (() => {
       status: item.status || "quero_ler",
       total_pages: item.total_pages ?? null,
       current_page: item.current_page ?? 0,
+      progress_pct: item.progress_pct ?? null,   // livro por % (e-book); nulo = por página
       total_chapters: item.total_chapters ?? null,
       current_chapter: item.current_chapter ?? 0,
       total_volumes: item.total_volumes ?? null,

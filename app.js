@@ -509,6 +509,24 @@
     }
     return novo;
   }
+  // salva progresso de LIVRO por porcentagem (e-book/Kindle)
+  async function salvarProgressoPct(item, pct) {
+    pct = Math.max(0, Math.min(100, pct));
+    const antes = item.progress_pct ?? 0;
+    const patch = { progress_pct: pct };
+    if (pct > 0 && item.status === "quero_ler") patch.status = "lendo";
+    if (pct > 0 && !item.started_at) patch.started_at = hojeISO();
+    // se conhecemos o total de páginas, mantém current_page coerente e loga a sessão
+    if (item.total_pages) {
+      const pgNovo = Math.round((pct / 100) * item.total_pages);
+      patch.current_page = pgNovo;
+      const novo = await Store.update(item.id, patch);
+      const delta = pgNovo - Math.round((antes / 100) * item.total_pages);
+      if (delta > 0) { try { await Store.addSession(item.id, { amount: delta, unit: "paginas", to_pos: pgNovo }); } catch {} }
+      return novo;
+    }
+    return await Store.update(item.id, patch);
+  }
   // #2 se chegou ao total, pergunta e conclui. Retorna true se concluiu.
   async function checarConclusao(novo) {
     if (temTotal(novo) && progresso(novo) >= 1 && novo.status !== "lido") {
@@ -527,18 +545,20 @@
     if (!it) return;
     fecharModais();
     const ehLivro = it.kind === "livro";
-    const cur = ehLivro ? (it.current_page || 0) : (it.current_chapter || 0);
-    const tot = ehLivro ? it.total_pages : it.total_chapters;
-    const unidade = ehLivro ? "página" : "capítulo";
+    const ehPct = ehLivro && it.progress_pct != null;   // e-book por %
+    const cur = ehPct ? (it.progress_pct || 0) : ehLivro ? (it.current_page || 0) : (it.current_chapter || 0);
+    const tot = ehPct ? 100 : ehLivro ? it.total_pages : it.total_chapters;
+    const passo = ehPct ? 5 : 1;
+    const unidade = ehPct ? "% lido" : ehLivro ? "página" : "capítulo";
     $("rapido-titulo").textContent = it.title;
     $("rapido-corpo").innerHTML = `
       <div class="rapido-prog">
         <button class="rapido-step" id="r-menos" aria-label="menos">−</button>
         <input class="input" id="r-cur" type="number" inputmode="numeric" value="${cur}">
-        <span class="prog-sep">de ${tot || "?"}</span>
+        <span class="prog-sep">${ehPct ? "de 100" : "de " + (tot || "?")}</span>
         <button class="rapido-step" id="r-mais" aria-label="mais">+</button>
       </div>
-      <div class="prog-dica" style="text-align:center">${unidade} atual</div>
+      <div class="prog-dica" style="text-align:center">${unidade}</div>
       <div class="ficha-rodape">
         <button class="btn-ghost" id="r-cancel">Cancelar</button>
         <button class="btn-primary" id="r-salvar">Salvar</button>
@@ -546,12 +566,15 @@
     $("modal-rapido").hidden = false;
     const inp = $("r-cur");
     setTimeout(() => { inp.focus(); inp.select(); }, 40);
-    $("r-mais").onclick = () => { inp.value = (parseInt(inp.value) || 0) + 1; };
-    $("r-menos").onclick = () => { inp.value = Math.max(0, (parseInt(inp.value) || 0) - 1); };
+    const teto = ehPct ? 100 : Infinity;
+    $("r-mais").onclick = () => { inp.value = Math.min(teto, (parseInt(inp.value) || 0) + passo); };
+    $("r-menos").onclick = () => { inp.value = Math.max(0, (parseInt(inp.value) || 0) - passo); };
     $("r-cancel").onclick = () => ($("modal-rapido").hidden = true);
     const salvar = async () => {
       const novoCur = parseInt(inp.value) || 0;
-      const novo = ehLivro
+      const novo = ehPct
+        ? await salvarProgressoPct(it, novoCur)
+        : ehLivro
         ? await salvarProgresso(it, novoCur, it.total_pages, 0, null)
         : await salvarProgresso(it, novoCur, it.total_chapters, it.current_volume || 0, it.total_volumes);
       $("modal-rapido").hidden = true;
@@ -709,6 +732,7 @@
   // progresso 0..1 conforme a categoria
   function progresso(item) {
     if (item.kind === "livro") {
+      if (item.progress_pct != null) return Math.min(1, item.progress_pct / 100);  // e-book/Kindle
       if (item.total_pages) return Math.min(1, (item.current_page || 0) / item.total_pages);
     } else {
       if (item.total_chapters) return Math.min(1, (item.current_chapter || 0) / item.total_chapters);
@@ -719,7 +743,7 @@
 
   // tem um total definido? (só aí a % faz sentido)
   function temTotal(item) {
-    return item.kind === "livro" ? !!item.total_pages
+    return item.kind === "livro" ? (item.progress_pct != null || !!item.total_pages)
       : !!(item.total_chapters || item.total_volumes);
   }
 
@@ -806,10 +830,12 @@
       const pct = Math.round(progresso(i) * 100);
       const cheias = Math.round(clampNota(i.rating) || 0);
       const estrelas = cheias ? "★".repeat(cheias) + "☆".repeat(5 - cheias) : "";
-      const progTxt = progressoTexto(i);
+      const ehPct = i.kind === "livro" && i.progress_pct != null;   // e-book por %
+      const progTxt = ehPct ? "" : progressoTexto(i);
       const pctTxt = temTotal(i) ? `<span class="prog-pctinline">${pct}%</span>` : "";
-      const progHTML = progTxt
-        ? `<div class="card-prog">${progTxt}${pctTxt ? " · " + pctTxt : ""}</div>` : "";
+      const progHTML = ehPct
+        ? `<div class="card-prog"><span class="prog-pctinline">${pct}% lido</span></div>`
+        : (progTxt ? `<div class="card-prog">${progTxt}${pctTxt ? " · " + pctTxt : ""}</div>` : "");
       const fmtBadge = i.format
         ? `<span class="fmt-badge">${ico(i.format === "fisico" ? "bookopen" : "phone", 13)} ${i.format === "fisico" ? "Físico" : "Digital"}</span>` : "";
       const colNome = i.collection_id ? nomeColecao(i.collection_id) : "";
@@ -1262,12 +1288,28 @@
     // bloco de progresso conforme categoria
     let progBloco;
     if (it.kind === "livro") {
-      progBloco = `<div class="prog-linha">
-          <input class="input" id="f-cur" type="number" inputmode="numeric" value="${it.current_page || 0}">
-          <span class="prog-sep">de</span>
-          <input class="input" id="f-tot" type="number" inputmode="numeric" value="${it.total_pages || ""}" placeholder="total">
-          <span class="prog-sep">páginas</span>
-        </div>`;
+      if (it.progress_pct != null) {
+        // e-book/Kindle: acompanha por porcentagem
+        progBloco = `<div class="prog-linha">
+            <input class="input" id="f-pct-in" type="number" inputmode="numeric" min="0" max="100" value="${it.progress_pct || 0}">
+            <span class="prog-sep">% lido</span>
+          </div>
+          <div class="prog-dica">
+            Acompanhando por porcentagem (e-book/Kindle).
+            <button class="link-btn" id="f-modo-pag" type="button">voltar para páginas</button>
+          </div>`;
+      } else {
+        progBloco = `<div class="prog-linha">
+            <input class="input" id="f-cur" type="number" inputmode="numeric" value="${it.current_page || 0}">
+            <span class="prog-sep">de</span>
+            <input class="input" id="f-tot" type="number" inputmode="numeric" value="${it.total_pages || ""}" placeholder="total">
+            <span class="prog-sep">páginas</span>
+          </div>
+          <div class="prog-dica">
+            Lendo em e-book/Kindle (mostra só %)?
+            <button class="link-btn" id="f-modo-pct" type="button">acompanhar por %</button>
+          </div>`;
+      }
     } else {
       // "detectar lançados" usa a MangaBaka → só faz sentido em mangá
       const dicaDetectar = it.kind === "manga" ? `
@@ -1434,6 +1476,34 @@
     }
     ["f-cur", "f-tot", "f-curv", "f-totv"].forEach((fid) => {
       const el = $(fid); if (el) el.addEventListener("change", salvarProg);
+    });
+
+    // --- progresso por % (livro em e-book/Kindle) ---
+    const fPct = $("f-pct-in");
+    if (fPct) fPct.addEventListener("change", async () => {
+      const novo = await salvarProgressoPct(it, parseInt(fPct.value) || 0);
+      Object.assign(it, novo);
+      const p = Math.round(progresso(novo) * 100);
+      $("f-barra").style.width = p + "%";
+      $("f-pct").textContent = p + "% lido";
+      if (novo.started_at && $("f-inicio")) $("f-inicio").value = novo.started_at;
+      renderBiblioteca();
+      if (await checarConclusao(novo)) { abrirFicha(id); renderBiblioteca(); }
+    });
+    // alternar entre página e % (só livro)
+    const bModoPct = $("f-modo-pct");
+    if (bModoPct) bModoPct.addEventListener("click", async () => {
+      // inicia o % a partir do progresso atual em páginas, se houver
+      const ini = (it.total_pages && it.current_page) ? Math.round((it.current_page / it.total_pages) * 100) : 0;
+      await Store.update(id, { progress_pct: ini });
+      it.progress_pct = ini;
+      abrirFicha(id);
+    });
+    const bModoPag = $("f-modo-pag");
+    if (bModoPag) bModoPag.addEventListener("click", async () => {
+      await Store.update(id, { progress_pct: null });
+      it.progress_pct = null;
+      abrirFicha(id);
     });
 
     // --- datas (editáveis) ---
