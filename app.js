@@ -841,6 +841,10 @@
       const progHTML = ehDigital
         ? (temTotal(i) ? `<div class="card-prog"><span class="prog-pctinline">${pct}% lido</span></div>` : "")
         : (progTxt ? `<div class="card-prog">${progTxt}${pctTxt ? " · " + pctTxt : ""}</div>` : "");
+      // versão inline pro modo lista (digital mostra "% lido"; o resto, "pág/cap X/Y · %")
+      const listProg = ehDigital
+        ? (temTotal(i) ? `<span class="list-prog"><span class="prog-pctinline">${pct}% lido</span></span>` : "")
+        : (progTxt ? `<span class="list-prog">${progTxt}${pctTxt ? " · " + pctTxt : ""}</span>` : "");
       const fmtBadge = i.format
         ? `<span class="fmt-badge">${ico(i.format === "fisico" ? "bookopen" : "phone", 13)} ${i.format === "fisico" ? "Físico" : "Digital"}</span>` : "";
       const colNome = i.collection_id ? nomeColecao(i.collection_id) : "";
@@ -854,7 +858,7 @@
             <div class="card-autor">${esc(i.authors) || "—"}</div>
             <div class="list-meta">
               <span class="list-badge" style="background:${st.cor}">${st.label}</span>
-              ${progTxt ? `<span class="list-prog">${progTxt}${pctTxt ? " · " + pctTxt : ""}</span>` : ""}
+              ${listProg}
               ${fmtBadge}
               ${colBadge}
               ${estrelas ? `<span class="card-rating">${estrelas}</span>` : ""}
