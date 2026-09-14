@@ -22,7 +22,6 @@ create table if not exists items (
   -- progresso (livro usa páginas; hq/mangá usam capítulos/volumes)
   total_pages     int,
   current_page    int default 0,
-  progress_pct    int,                              -- legado (livro por %); substituído por pos_atual/pos_total
   pos_atual       int,                              -- livro por "posição" do Kindle/e-book (posição atual)
   pos_total       int,                              -- total de posições da edição Kindle; nulo = por página
   total_chapters  int,

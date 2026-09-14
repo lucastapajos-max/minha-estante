@@ -513,7 +513,7 @@
   async function salvarPosicao(item, cur, tot) {
     cur = Math.max(0, cur || 0);
     const antes = item.pos_atual || 0;
-    const patch = { pos_atual: cur, pos_total: tot, progress_pct: null };  // migra o % legado
+    const patch = { pos_atual: cur, pos_total: tot };
     if (cur > 0 && item.status === "quero_ler") patch.status = "lendo";
     if (cur > 0 && !item.started_at) patch.started_at = hojeISO();
     // histórico/estatística seguem em páginas: converte posição→página pelo total FÍSICO (ISBN)
@@ -733,12 +733,11 @@
 
   // progresso 0..1 conforme a categoria
   // livro acompanhado por "posição" do Kindle (ou % legado) em vez de página
-  const ehLivroDigital = (i) => i.kind === "livro" && (i.pos_total != null || i.progress_pct != null);
+  const ehLivroDigital = (i) => i.kind === "livro" && i.pos_total != null;
 
   function progresso(item) {
     if (item.kind === "livro") {
       if (item.pos_total) return Math.min(1, (item.pos_atual || 0) / item.pos_total);  // posição Kindle
-      if (item.progress_pct != null) return Math.min(1, item.progress_pct / 100);       // % (legado)
       if (item.total_pages) return Math.min(1, (item.current_page || 0) / item.total_pages);
     } else {
       if (item.total_chapters) return Math.min(1, (item.current_chapter || 0) / item.total_chapters);
@@ -749,7 +748,7 @@
 
   // tem um total definido? (só aí a % faz sentido)
   function temTotal(item) {
-    return item.kind === "livro" ? (!!item.pos_total || item.progress_pct != null || !!item.total_pages)
+    return item.kind === "livro" ? (!!item.pos_total || !!item.total_pages)
       : !!(item.total_chapters || item.total_volumes);
   }
 
@@ -1511,8 +1510,8 @@
     });
     const bModoPag = $("f-modo-pag");
     if (bModoPag) bModoPag.addEventListener("click", async () => {
-      await Store.update(id, { pos_atual: null, pos_total: null, progress_pct: null });
-      it.pos_atual = null; it.pos_total = null; it.progress_pct = null;
+      await Store.update(id, { pos_atual: null, pos_total: null });
+      it.pos_atual = null; it.pos_total = null;
       abrirFicha(id);
     });
 

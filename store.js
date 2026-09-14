@@ -29,7 +29,6 @@ const Store = (() => {
       status: item.status || "quero_ler",
       total_pages: item.total_pages ?? null,
       current_page: item.current_page ?? 0,
-      progress_pct: item.progress_pct ?? null,   // legado (livro por %)
       pos_atual: item.pos_atual ?? null,          // livro por "posição" do Kindle
       pos_total: item.pos_total ?? null,          // total de posições; nulo = por página
       total_chapters: item.total_chapters ?? null,
