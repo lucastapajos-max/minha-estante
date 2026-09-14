@@ -1296,13 +1296,13 @@
       if (ehLivroDigital(it)) {
         // Kindle/e-book: acompanha pela "posição" (Posição X de Y)
         progBloco = `<div class="prog-linha">
-            <input class="input" id="f-pos-cur" type="number" inputmode="numeric" value="${it.pos_atual || 0}">
+            <input class="input" id="f-pos-cur" type="text" inputmode="numeric" value="${it.pos_atual || 0}">
             <span class="prog-sep">de</span>
-            <input class="input" id="f-pos-tot" type="number" inputmode="numeric" value="${it.pos_total || ""}" placeholder="total">
+            <input class="input" id="f-pos-tot" type="text" inputmode="numeric" value="${it.pos_total || ""}" placeholder="total">
             <span class="prog-sep">posição</span>
           </div>
           <div class="prog-dica">
-            Kindle/e-book: use a <b>posição</b> (ex.: "Posição 3450 de 9876").
+            Kindle/e-book: use a <b>posição</b> (ex.: "Posição 3.450 de 9.876"). Pode digitar com ou sem ponto.
             <button class="link-btn" id="f-modo-pag" type="button">voltar para páginas</button>
           </div>`;
       } else {
@@ -1487,8 +1487,10 @@
 
     // --- progresso por posição (livro no Kindle/e-book) ---
     async function salvarPos() {
-      const cur = parseInt($("f-pos-cur").value) || 0;
-      const tot = parseInt($("f-pos-tot").value) || null;
+      // tolera ponto de milhar do Kindle (9.876 → 9876)
+      const soNum = (id) => parseInt(($(id).value || "").replace(/\D/g, ""));
+      const cur = soNum("f-pos-cur") || 0;
+      const tot = soNum("f-pos-tot") || null;
       const novo = await salvarPosicao(it, cur, tot);
       Object.assign(it, novo);
       const p = Math.round(progresso(novo) * 100);
