@@ -18,6 +18,9 @@ jobs:
       - name: Instalar dependências
         run: pip install requests pywebpush
 
+      - name: Self-test do parse (barra antes de escrever no banco)
+        run: python robo/check_chapters.py --selftest
+
       - name: Rodar o robô
         env:
           SUPABASE_URL: https://mtiknwxmnhlguspaazgh.supabase.co

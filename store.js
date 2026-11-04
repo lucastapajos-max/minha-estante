@@ -37,7 +37,6 @@ const Store = (() => {
       current_volume: item.current_volume ?? 0,
       rating: item.rating ?? null,
       review: item.review || "",
-      notes: item.notes || "",
       genres: item.genres || [],
       source: item.source || "manual",
       external_id: item.external_id || "",

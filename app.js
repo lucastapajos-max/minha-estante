@@ -13,9 +13,9 @@
     abandonado: { label: "Abandonado", cor: "var(--st-abandonado)" },
   };
   const KIND = {
-    livro:     { label: "Livro",     unidade: "páginas" },
-    quadrinho: { label: "Quadrinho", unidade: "páginas" },
-    manga:     { label: "Mangá",     unidade: "capítulos" },
+    livro:     { label: "Livro" },
+    quadrinho: { label: "Quadrinho" },
+    manga:     { label: "Mangá" },
   };
 
   // gêneros comuns por categoria (sugestões clicáveis)
@@ -556,7 +556,7 @@
     $("rapido-corpo").innerHTML = `
       <div class="rapido-prog">
         <button class="rapido-step" id="r-menos" aria-label="menos">−</button>
-        <input class="input" id="r-cur" type="number" inputmode="numeric" value="${cur}">
+        <input class="input" id="r-cur" type="text" inputmode="numeric" value="${cur}">
         <span class="prog-sep">de ${tot || "?"}</span>
         <button class="rapido-step" id="r-mais" aria-label="mais">+</button>
       </div>
@@ -567,13 +567,14 @@
       </div>`;
     $("modal-rapido").hidden = false;
     const inp = $("r-cur");
+    const ler = () => parseInt((inp.value || "").replace(/\D/g, "")) || 0;  // tolera ponto de milhar
     setTimeout(() => { inp.focus(); inp.select(); }, 40);
     const teto = ehDigital ? (it.pos_total || Infinity) : Infinity;
-    $("r-mais").onclick = () => { inp.value = Math.min(teto, (parseInt(inp.value) || 0) + passo); };
-    $("r-menos").onclick = () => { inp.value = Math.max(0, (parseInt(inp.value) || 0) - passo); };
+    $("r-mais").onclick = () => { inp.value = Math.min(teto, ler() + passo); };
+    $("r-menos").onclick = () => { inp.value = Math.max(0, ler() - passo); };
     $("r-cancel").onclick = () => ($("modal-rapido").hidden = true);
     const salvar = async () => {
-      const novoCur = parseInt(inp.value) || 0;
+      const novoCur = ler();
       const novo = ehDigital
         ? await salvarPosicao(it, novoCur, it.pos_total)
         : ehLivro

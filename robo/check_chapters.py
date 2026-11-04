@@ -17,22 +17,24 @@ import os, json, time, sys
 import requests
 from pywebpush import webpush, WebPushException
 
-SUPABASE_URL = os.environ["SUPABASE_URL"].rstrip("/")
-SERVICE_KEY  = os.environ["SUPABASE_SERVICE_KEY"]
-VAPID_PRIVATE = os.environ["VAPID_PRIVATE_KEY"]
-VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:exemplo@email.com")
-APP_URL = os.environ.get("APP_URL", "https://minha-estante.lucastapajos.workers.dev")
+# setup só quando for rodar de verdade (o --selftest não precisa de segredos)
+if "--selftest" not in sys.argv:
+    SUPABASE_URL = os.environ["SUPABASE_URL"].rstrip("/")
+    SERVICE_KEY  = os.environ["SUPABASE_SERVICE_KEY"]
+    VAPID_PRIVATE = os.environ["VAPID_PRIVATE_KEY"]
+    VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:exemplo@email.com")
+    APP_URL = os.environ.get("APP_URL", "https://minha-estante.lucastapajos.workers.dev")
 
-SB_HEADERS = {
-    "apikey": SERVICE_KEY,
-    "Authorization": f"Bearer {SERVICE_KEY}",
-    "Content-Type": "application/json",
-}
+    SB_HEADERS = {
+        "apikey": SERVICE_KEY,
+        "Authorization": f"Bearer {SERVICE_KEY}",
+        "Content-Type": "application/json",
+    }
 
-# a chave privada vem como PEM no segredo → grava num arquivo pro pywebpush
-PEM_PATH = "vapid_private.pem"
-with open(PEM_PATH, "w") as f:
-    f.write(VAPID_PRIVATE.replace("\\n", "\n").strip() + "\n")
+    # a chave privada vem como PEM no segredo → grava num arquivo pro pywebpush
+    PEM_PATH = "vapid_private.pem"
+    with open(PEM_PATH, "w") as f:
+        f.write(VAPID_PRIVATE.replace("\\n", "\n").strip() + "\n")
 
 
 def sb_get(path):
@@ -51,13 +53,16 @@ def sb_delete(path):
     requests.delete(f"{SUPABASE_URL}/rest/v1/{path}", headers=SB_HEADERS, timeout=30)
 
 
+def caps_de(serie):
+    """total_chapters como inteiro, ou None se ausente/inválido."""
+    try:
+        return int(float(serie.get("total_chapters")))
+    except (TypeError, ValueError):
+        return None
+
+
 def mangabaka_ultimo(mangabaka_id, titulo):
     """Último capítulo lançado (inteiro) ou None. Retorna (id, ultimo)."""
-    def _caps(serie):
-        try:
-            return int(float(serie.get("total_chapters")))
-        except (TypeError, ValueError):
-            return None
     try:
         mid = mangabaka_id
         serie = None
@@ -73,7 +78,7 @@ def mangabaka_ultimo(mangabaka_id, titulo):
                 return mid, None
             serie = data[0]
             mid = str(serie.get("id") or mid or "")
-        return mid, _caps(serie)
+        return mid, caps_de(serie)
     except Exception as e:
         print(f"  ! erro MangaBaka ({titulo}): {e}")
         return mangabaka_id, None
@@ -146,7 +151,18 @@ def main():
             sb_patch(f"items?id=eq.{it['id']}", {"last_notified_chapter": ultimo})
 
 
+def _selftest():
+    assert caps_de({"total_chapters": "418"}) == 418
+    assert caps_de({"total_chapters": 418.9}) == 418
+    assert caps_de({"total_chapters": None}) is None
+    assert caps_de({}) is None
+    print("selftest ok")
+
+
 if __name__ == "__main__":
+    if "--selftest" in sys.argv:
+        _selftest()
+        sys.exit(0)
     try:
         main()
     except Exception as e:
