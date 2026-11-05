@@ -133,22 +133,23 @@ const APIs = (() => {
     }; });
   }
 
-  // junta duas listas sem duplicar (por external_id ou título+autor)
+  // junta duas listas sem duplicar (mesma edição = mesmo ISBN; sem ISBN, título+autor)
   function mesclar(a, b) {
-    const chave = (x) => (x.external_id || (x.title + "|" + x.authors)).toLowerCase();
+    const chave = (x) => (x.isbn || x.external_id || (x.title + "|" + x.authors)).toLowerCase();
     const vistos = new Set(a.map(chave));
     return a.concat(b.filter((x) => !vistos.has(chave(x))));
   }
 
   async function buscarLivros(termo) {
-    // edições em português primeiro, mas sem esconder o resto (o livro certo pode não ter edição PT)
-    const [pt, geral] = await Promise.all([
+    // edições em português primeiro, mas sem esconder o resto (o livro certo pode não ter edição PT).
+    // A Open Library entra junto: costuma ter a edição brasileira que o Google não põe no topo.
+    const [pt, geral, ol] = await Promise.all([
       googleBooks(termo, true).catch(() => []),
       googleBooks(termo, false).catch(() => []),
+      openLibrary(termo).catch(() => []),
     ]);
-    const ehPt = (x) => x.language === "pt";
-    let lista = mesclar(pt.filter(ehPt), mesclar(geral.filter(ehPt), mesclar(pt, geral))).slice(0, 15);
-    if (!lista.length) lista = await openLibrary(termo).catch(() => []);   // reserva
+    const ehPt = (x) => /^pt/i.test(x.language || "");   // Google manda "pt" ou "pt-BR"
+    const lista = [pt.filter(ehPt), ol, geral.filter(ehPt), pt, geral].reduce(mesclar, []).slice(0, 15);
     return melhorarCapas(lista);
   }
 
