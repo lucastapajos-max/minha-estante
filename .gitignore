@@ -9,3 +9,4 @@ Thumbs.db
 estante-backup-*.json
 
 .impeccable/
+__pycache__/
