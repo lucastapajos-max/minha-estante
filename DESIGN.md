@@ -60,6 +60,9 @@ Sem CAIXA-ALTA em rótulos. Sem negrito "gritando" em texto corrido.
 - **Ficha cinematográfica**: a capa vira atmosfera desfocada no topo do modal, e o conteúdo emerge do
   escuro. Título grande; % lido como número-herói.
 - **Botões**: raio 6px. Primário = cor do texto; secundário = contorno de 1px.
+- **Capa tipográfica**: obra sem capa (ou com capa quebrada) vira um bloco grafite com o título em Bricolage 800
+  e o autor em 300, alinhados à esquerda. A fita continua por cima. Nunca um retângulo vazio.
+- **Estatísticas**: números grandes sobre um fio de 1px, sem caixa, sem ícone decorativo e sem frase de incentivo.
 - **Status**: rótulo discreto sobre a capa com ponto de cor do status (as cores de status nunca viram fundo grande).
 
 ## 5. Profundidade

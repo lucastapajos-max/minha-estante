@@ -74,8 +74,6 @@
     list: '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',
     sun: '<circle cx="12" cy="12" r="4"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
     moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
-    flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
-    trophy: '<path d="M6 9a6 6 0 0 0 12 0V3H6z"/><path d="M6 5H3a2 2 0 0 0 2 4M18 5h3a2 2 0 0 1-2 4"/><line x1="12" y1="15" x2="12" y2="19"/><line x1="8" y1="22" x2="16" y2="22"/><line x1="12" y1="19" x2="12" y2="22"/>',
   };
   const KIND_ICON = { livro: "book", quadrinho: "zap", manga: "bookmark" };
   function ico(name, size = 18) {
@@ -292,12 +290,10 @@
       </div>
 
       <div class="stats-secao">
-        <div class="streak-card">
-          <span class="streak-ico">${ico("flame", 26)}</span>
-          <div>
-            <div class="streak-num">${streakAtual} ${streakAtual === 1 ? "dia seguido" : "dias seguidos"}</div>
-            <div class="streak-sub">${streakAtual ? "de leitura — continue!" : "Registre um avanço hoje pra começar sua sequência"} ${maiorStreak > 1 ? `· recorde: ${maiorStreak}` : ""}</div>
-          </div>
+        <h2>Sequência</h2>
+        <div class="stats-nums">
+          <div class="stat-num"><b>${streakAtual}</b><span>${streakAtual === 1 ? "dia seguido agora" : "dias seguidos agora"}</span></div>
+          <div class="stat-num"><b>${maiorStreak}</b><span>maior sequência</span></div>
         </div>
       </div>
 
@@ -308,11 +304,9 @@
           <div class="stat-num"><b>${lidosAno.length}</b><span>em ${ano}</span></div>
           <div class="stat-num"><b>${lidosMes.length}</b><span>em ${MESES[mesAtual]}</span></div>
         </div>
-        <div class="stats-tipos">
-          <span>${ico("book", 15)} ${porTipo.livro} livros</span>
-          <span>${ico("zap", 15)} ${porTipo.quadrinho} quadrinhos</span>
-          <span>${ico("bookmark", 15)} ${porTipo.manga} mangás</span>
-        </div>
+        <div class="meta-txt">${[["livro", "livro", "livros"], ["manga", "mangá", "mangás"], ["quadrinho", "quadrinho", "quadrinhos"]]
+          .filter(([k]) => k !== "quadrinho" || porTipo.quadrinho)   // quadrinhos só aparecem se existirem (aba oculta)
+          .map(([k, um, varios]) => plural(porTipo[k], um, varios)).join(" e ")}</div>
       </div>
 
       <div class="stats-secao">
@@ -324,16 +318,16 @@
         </div>
         <div class="stats-nums" style="margin-top:12px">
           <div class="stat-num"><b>${volPags}</b><span>páginas (livros)</span></div>
-          <div class="stat-num"><b>${volCaps}</b><span>capítulos (mangás/HQs)</span></div>
+          <div class="stat-num"><b>${volCaps}</b><span>capítulos (mangás)</span></div>
         </div>
-        <div class="meta-txt">Média diária ${rotuloPeriodo}: <b>${mediaPags}</b> pág/dia · <b>${mediaCaps}</b> cap/dia</div>
+        <div class="meta-txt">Média diária ${rotuloPeriodo}: <b>${mediaPags}</b> pág/dia e <b>${mediaCaps}</b> cap/dia</div>
       </div>
 
       <div class="stats-secao">
-        <h2>${ico("trophy", 15)} Sua retrospectiva de ${ano}</h2>
-        ${lidosAno.length ? `<div class="retro-card">
-          <div class="retro-linha"><b>${lidosAno.length}</b> livro(s) e <b>${pagesAno.toLocaleString("pt-BR")}</b> páginas lidas</div>
-          ${favorito ? `<div class="retro-linha">Favorito: <b>${esc(favorito.title)}</b> (nota ${Math.round(clampNota(favorito.rating))})</div>` : ""}
+        <h2>Sua retrospectiva de ${ano}</h2>
+        ${lidosAno.length ? `<div class="retro-resumo">
+          <div class="retro-linha"><b>${plural(lidosAno.length, "obra lida", "obras lidas")}</b> e <b>${pagesAno.toLocaleString("pt-BR")}</b> páginas</div>
+          ${favorito ? `<div class="retro-linha">Favorito: <b>${esc(favorito.title)}</b> ${notaHTML(Math.round(clampNota(favorito.rating)), 12)}</div>` : ""}
           ${genTopAno ? `<div class="retro-linha">Gênero do ano: <b>${esc(genTopAno[0])}</b></div>` : ""}
           ${autTopAno && autTopAno[1] > 1 ? `<div class="retro-linha">Autor mais lido: <b>${esc(autTopAno[0])}</b> (${autTopAno[1]} livros)</div>` : ""}
           ${mesTop ? `<div class="retro-linha">Mês mais forte: <b>${mesTop}</b></div>` : ""}
@@ -347,7 +341,8 @@
           <div class="stat-num"><b>${mediaPagDiaGeral}</b><span>páginas/dia lido</span></div>
           <div class="stat-num"><b>${tempoMedio != null ? tempoMedio : "—"}</b><span>dias p/ terminar (média)</span></div>
         </div>
-        ${maisLongo ? `<div class="meta-txt">Mais longo: <b>${esc(maisLongo.title)}</b> (${maisLongo.total_pages} pág)${maisCurto && maisCurto !== maisLongo ? ` · mais curto: <b>${esc(maisCurto.title)}</b> (${maisCurto.total_pages} pág)` : ""}</div>` : ""}
+        ${maisLongo ? `<div class="meta-txt">Mais longo: <b>${esc(maisLongo.title)}</b> (${maisLongo.total_pages} pág)</div>` : ""}
+        ${maisCurto && maisCurto !== maisLongo ? `<div class="meta-txt">Mais curto: <b>${esc(maisCurto.title)}</b> (${maisCurto.total_pages} pág)</div>` : ""}
       </div>
 
       <div class="stats-secao">
@@ -355,7 +350,7 @@
         <div class="grafico-mes">
           ${porMes.map((n, idx) => `
             <div class="gm-col ${idx === mesAtual ? "gm-atual" : ""}">
-              <div class="gm-barra-wrap"><div class="gm-barra" style="height:${Math.round((n / maxMes) * 100)}%" title="${n} livro(s)">${n ? `<span class="gm-n">${n}</span>` : ""}</div></div>
+              <div class="gm-barra-wrap"><div class="gm-barra" style="height:${Math.round((n / maxMes) * 100)}%" title="${plural(n, "obra lida", "obras lidas")}">${n ? `<span class="gm-n">${n}</span>` : ""}</div></div>
               <div class="gm-label">${MESES[idx]}</div>
             </div>`).join("")}
         </div>
@@ -852,15 +847,16 @@
     return u;
   }
 
+  // sem capa (ou capa quebrada): capa tipográfica com título e autor; sem título, o ícone do tipo
   function capaHTML(item, cls) {
-    const fb = ico(KIND_ICON[item.kind] || "book", 30);
-    if (item.cover_url) {
-      const fbAttr = fb.replace(/"/g, "&quot;");
-      return `<img class="${cls}" src="${esc(capaURL(item.cover_url))}" alt="" loading="lazy"
-              onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'${cls} fb',innerHTML:'${fbAttr}'}))">`;
-    }
-    return `<div class="${cls} fb">${fb}</div>`;
+    const fb = item.title
+      ? `<div class="${cls} fb fb-tipo"><span class="fb-tit">${esc(item.title)}</span><span class="fb-aut">${esc(item.authors || "")}</span></div>`
+      : `<div class="${cls} fb">${ico(KIND_ICON[item.kind] || "book", 30)}</div>`;
+    if (!item.cover_url) return fb;
+    return `<img class="${cls}" src="${esc(capaURL(item.cover_url))}" alt="" loading="lazy" data-fb="${esc(fb)}" onerror="capaFalhou(this)">`;
   }
+  // o HTML do fallback já vem escapado no data-fb (o navegador desfaz só a camada do atributo)
+  window.capaFalhou = (img) => { img.outerHTML = img.dataset.fb; };
 
   // progresso 0..1 conforme a categoria
   // livro acompanhado por "posição" do Kindle (ou % legado) em vez de página
@@ -1050,7 +1046,8 @@
           <button type="button" class="card-abrir"><span class="card-titulo">${esc(i.title)}</span></button>
           <div class="card-autor">${esc(i.authors) || "—"}</div>
           ${proxima ? `<button type="button" class="btn-primary btn-comecar" data-comecar>Começar a ler</button>`
-            : destaque ? `<div class="destaque-n">${pct}%<small>lido</small></div>${progTxt ? `<div class="card-prog">${progTxt}</div>` : ""}` : progHTML}
+            : destaque ? (pct ? `<div class="destaque-n">${pct}%<small>lido</small></div>${progTxt ? `<div class="card-prog">${progTxt}</div>` : ""}`
+              : `<div class="destaque-inicio">Ainda não começou</div>`) : progHTML}
           <div class="card-baixo">${fmtBadge}${colBadge}${estrelas ? `<span class="card-rating">${estrelas}</span>` : ""}${filaCtl}</div>
         </div>
       </div>`;
@@ -1506,8 +1503,8 @@
             <span class="prog-sep">posição</span>
           </div>
           <div class="prog-dica">
-            Kindle/e-book: use a <b>posição</b> (ex.: "Posição 3.450 de 9.876"). Pode digitar com ou sem ponto.
-            <button class="link-btn" id="f-modo-pag" type="button">voltar para páginas</button>
+            Digite a posição do Kindle, com ou sem ponto (ex.: 3.450 de 9.876).
+            <button class="link-btn" id="f-modo-pag" type="button">Usar páginas</button>
           </div>`;
       } else {
         progBloco = `<div class="prog-linha">
@@ -1517,8 +1514,7 @@
             <span class="prog-sep">páginas</span>
           </div>
           <div class="prog-dica">
-            Lendo no Kindle/e-book (mostra "Posição X de Y")?
-            <button class="link-btn" id="f-modo-pos" type="button">acompanhar por posição</button>
+            <button class="link-btn" id="f-modo-pos" type="button">Lendo no Kindle? Usar a posição</button>
           </div>`;
       }
     } else {
@@ -1573,14 +1569,14 @@
       </div>
 
       <div class="ficha-secao">
-        <h2>Status</h2>
-        <div class="status-select" id="f-status">${statusOps}</div>
-      </div>
-
-      <div class="ficha-secao">
         <div class="prog-pct"><span class="n" id="f-pct">${pct}%</span><span>lido</span></div>
         <div class="prog-barra"><i id="f-barra" style="width:${pct}%"></i></div>
         ${progBloco}
+      </div>
+
+      <div class="ficha-secao">
+        <h2>Status</h2>
+        <div class="status-select" id="f-status">${statusOps}</div>
       </div>
 
       <div class="ficha-secao">
