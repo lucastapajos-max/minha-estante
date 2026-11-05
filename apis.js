@@ -129,6 +129,7 @@ const APIs = (() => {
       genres: (d.subject || []).slice(0, 4),
       total_pages: d.number_of_pages_median || null,
       total_chapters: null, total_volumes: null,
+      language: lingua === "por" ? "pt" : "",
       source: "google_books", external_id: "",
     }; });
   }
@@ -149,8 +150,13 @@ const APIs = (() => {
       openLibrary(termo).catch(() => []),
     ]);
     const ehPt = (x) => /^pt/i.test(x.language || "");   // Google manda "pt" ou "pt-BR"
-    const lista = [pt.filter(ehPt), ol, geral.filter(ehPt), pt, geral].reduce(mesclar, []).slice(0, 15);
-    return melhorarCapas(lista);
+    const lista = await melhorarCapas([pt.filter(ehPt), ol, geral.filter(ehPt), pt, geral].reduce(mesclar, []).slice(0, 15));
+    // relevância: bate com o que foi digitado + edição em português + capa atual na Amazon (sinal de edição à venda no Brasil)
+    const norm = (t) => String(t || "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+    const palavras = norm(termo).split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 2);
+    const pontos = (x) => (palavras.length && palavras.every((w) => norm(x.title + " " + x.authors).includes(w)) ? 1 : 0)
+      + (ehPt(x) ? 1 : 0) + (x.cover_url.includes("media-amazon") ? 1 : 0);
+    return lista.sort((a, b) => pontos(b) - pontos(a));   // sort estável: empate mantém a ordem acima
   }
 
   // #3 ISBN: detecção e busca exata por ISBN-10 / ISBN-13
