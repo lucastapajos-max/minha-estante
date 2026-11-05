@@ -22,7 +22,7 @@
   const GENEROS_COMUNS = {
     livro: ["Fantasia", "Ficção científica", "Romance", "Suspense", "Terror", "Aventura", "Drama", "Mistério", "Biografia", "História", "Autoajuda", "Poesia", "Clássico", "Distopia", "Conto"],
     quadrinho: ["Super-heróis", "Ação", "Aventura", "Ficção científica", "Fantasia", "Terror", "Humor", "Drama", "Graphic Novel"],
-    manga: ["Shounen", "Shoujo", "Seinen", "Josei", "Ação", "Aventura", "Comédia", "Romance", "Terror", "Slice of Life", "Fantasia", "Ficção científica", "Esporte", "Sobrenatural", "Mistério", "Drama"],
+    manga: ["Shounen", "Shoujo", "Seinen", "Josei", "Ação", "Aventura", "Comédia", "Romance", "Terror", "Cotidiano", "Fantasia", "Ficção científica", "Esporte", "Sobrenatural", "Mistério", "Drama"],
   };
   const generosConhecidos = new Set();   // gêneros que já aparecem na estante
   let colecoesCache = [];                 // coleções (id → nome) pro render e filtros

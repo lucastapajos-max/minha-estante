@@ -60,11 +60,40 @@ const Store = (() => {
   const _capGenero = (g) => String(g).replace(/_/g, " ").replace(/\s+/g, " ").trim()
     .replace(/(^|[\s-])(\p{L})/gu, (_, sep, ch) => sep + ch.toUpperCase());
 
+  // tags em português: as fontes mandam em inglês, em minúsculas ou com grafias diferentes.
+  // A chave ignora maiúsculas, acentos, "_" e "-". Shounen, Seinen, Ecchi etc. são nomes próprios do gênero.
+  // shortcut: só traduz o que está na lista; termo novo em inglês passa direto, é só acrescentar aqui
+  const GENEROS_PT = {
+    "action": "Ação", "adventure": "Aventura", "comedy": "Comédia", "humor": "Comédia", "humour": "Comédia",
+    "fantasy": "Fantasia", "fantasy fiction": "Fantasia", "urban fantasy": "Fantasia urbana", "dark fantasy": "Fantasia sombria",
+    "fantasia dark": "Fantasia sombria", "fantasia contemporanea": "Fantasia contemporânea", "horror": "Terror",
+    "mystery": "Mistério", "murder mystery": "Policial", "detective and mystery stories": "Policial", "crime": "Policial",
+    "thriller": "Suspense", "thrillers": "Suspense", "psychological": "Psicológico", "supernatural": "Sobrenatural",
+    "historical": "Histórico", "historical fiction": "Ficção histórica", "tragedy": "Tragédia", "sports": "Esporte", "sport": "Esporte",
+    "school life": "Vida escolar", "slice of life": "Cotidiano", "award winning": "Premiado", "mature": "Adulto", "adult": "Adulto",
+    "martial arts": "Artes marciais", "music": "Música", "gourmet": "Culinária", "cooking": "Culinária", "harem": "Harém",
+    "science fiction": "Ficção científica", "sci fi": "Ficção científica", "ficcao cientifica": "Ficção científica",
+    "fiction": "Ficção", "juvenile fiction": "Ficção juvenil", "young adult fiction": "Jovem adulto", "young adult": "Jovem adulto",
+    "biography": "Biografia", "biography & autobiography": "Biografia", "history": "História", "poetry": "Poesia",
+    "self help": "Autoajuda", "philosophy": "Filosofia", "psychology": "Psicologia", "religion": "Religião", "science": "Ciência",
+    "business & economics": "Negócios", "literary criticism": "Crítica literária", "literature": "Literatura",
+    "comics & graphic novels": "Quadrinhos", "social science": "Ciências sociais", "classics": "Clássico", "short stories": "Conto",
+    "dystopia": "Distopia", "dystopian": "Distopia", "love stories": "Romance", "war": "Guerra", "family": "Família", "magic": "Magia",
+    "vampires": "Vampiros", "dragons": "Dragões", "space": "Espaço", "assassins": "Assassinos", "game": "Jogos", "games": "Jogos",
+    "dark": "Sombrio", "dark academia": "Dark Academia", "disputa de poder": "Disputa de poder", "literatura americana": "Literatura americana",
+    "literatura nacional": "Literatura nacional", "literatura inglesa (inclui literatura do canada)": "Literatura inglesa", "realismo magico": "Realismo mágico", "rpg": "RPG", "litrpg": "LitRPG",
+  };
+  const _chaveGenero = (g) => g.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[_-]/g, " ").replace(/\s+/g, " ").trim();
+  // "Fiction, Fantasy, General" vira Ficção + Fantasia; "General" não diz nada e sai
+  const _generosPT = (lista) => [...new Set(lista.flatMap((g) => (typeof g === "string" ? g.split(",") : [g]))
+    .filter((g) => typeof g !== "string" || (g.trim() && _chaveGenero(g) !== "general"))
+    .map((g) => (typeof g === "string" ? GENEROS_PT[_chaveGenero(g)] || _capGenero(g) : g)))];
+
   function normaliza(row) {
     if (!row) return row;
     if (row.rating != null) row.rating = Number(row.rating);
     if (!Array.isArray(row.genres)) row.genres = row.genres || [];
-    row.genres = row.genres.map((g) => (typeof g === "string" ? _capGenero(g) : g));
+    row.genres = _generosPT(row.genres);
     return row;
   }
 
