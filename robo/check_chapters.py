@@ -138,7 +138,7 @@ def main():
                       "&select=id,endpoint,p256dh,auth")
         payload = {
             "title": titulo,
-            "body": f"Capítulo {ultimo} saiu! 🎉",
+            "body": f"Saiu o capítulo {ultimo}.",
             "url": APP_URL,
             "tag": it["id"],
         }
