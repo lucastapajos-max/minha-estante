@@ -24,6 +24,7 @@
   --acento:    #c4384e;   /* carmim da fita: fita, aba ativa, foco */
   --acento-2:  #ecedef;   /* ênfase vem do peso/tamanho, não da cor */
   --acento-rgb: 196,56,78;
+  --acento-txt: #e06a7c;  /* carmim como TEXTO pequeno: o --acento puro não passa 4.5:1 no escuro */
   --fita-sombra: rgba(0,0,0,.4);
   --sombra:    none;      /* Runway: zero sombra de elevação */
   --raio:      8px;
@@ -52,6 +53,7 @@
   --acento:    #b32e44;
   --acento-2:  #16171a;
   --acento-rgb: 179,46,68;
+  --acento-txt: #b32e44;
   --fita-sombra: rgba(0,0,0,.22);
 
   --st-lendo:      #2f6fd6;
@@ -118,12 +120,15 @@ input { font-family: inherit; }
   font-size: 11px; font-weight: 500;
 }
 .bn-ico { display: flex; align-items: center; justify-content: center; height: 22px; }
-.bn-item.is-active { color: var(--acento); }
+.bn-item { position: relative; }
+.bn-item.is-active { color: var(--txt); }
+/* marcador do item ativo: o mesmo traço carmim da fita e da aba */
+.bn-item.is-active::before { content: ""; position: absolute; top: 0; left: 50%; width: 24px; height: 2px; background: var(--acento); transform: translateX(-50%); }
 
 /* masthead: o nome do app é a assinatura (The Verge), sem ícone */
 .topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 26px 0 6px; }
 .brand { display: flex; flex-direction: column; min-width: 0; }
-.brand-name { font-size: 44px; font-weight: 800; line-height: .9; letter-spacing: -.035em; }
+.brand-name { margin: 0; font-size: 44px; font-weight: 800; line-height: .9; letter-spacing: -.035em; }
 .brand-sus { font-size: 14px; font-weight: 300; color: var(--txt-fraco); margin-top: 8px; min-height: 18px; }
 .topbar-actions { display: flex; align-items: center; gap: 4px; padding-top: 4px; flex: 0 0 auto; }
 .btn-add { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--linha); background: transparent;
@@ -386,8 +391,10 @@ label.campo { display: block; margin: 12px 0 5px; font-size: 13px; color: var(--
 .prog-pct { display: flex; align-items: baseline; gap: 8px; margin-top: 4px; font-size: 15px; font-weight: 300; color: var(--txt-fraco); }
 .prog-pct .n { font-size: 56px; font-weight: 800; letter-spacing: -.04em; line-height: .9; color: var(--txt); }
 
-.estrelas { display: flex; gap: 3px; font-size: 26px; }
-.estrela { color: var(--txt-fraco); transition: color .1s; user-select: none; }
+.estrelas { display: flex; gap: 0; margin-left: -7px; }
+.estrela { width: 40px; height: 40px; display: grid; place-items: center; padding: 0; background: none; border: 0;
+  color: var(--txt-fraco); transition: color .1s; user-select: none; }
+.estrela.on svg { fill: currentColor; }
 .estrela.on { color: var(--acento); }
 
 .sinopse { font-family: var(--fonte-leitura); font-size: 17px; color: var(--txt-suave); line-height: 1.6; white-space: pre-wrap; max-width: 34em; }
@@ -500,10 +507,10 @@ label.campo { display: block; margin: 12px 0 5px; font-size: 13px; color: var(--
 .st-ponto { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
 
 /* ===== Fila "Próxima leitura" ===== */
-.proxima-rot { font-size: 13px; font-weight: 600; color: var(--acento); margin-bottom: 8px; }
+.proxima-rot { font-size: 13px; font-weight: 600; color: var(--acento-txt); margin-bottom: 8px; }
 .btn-comecar { margin-top: 18px; }
-.fila-ctl { display: inline-flex; gap: 4px; margin-left: auto; flex: 0 0 auto; }
-.fila-ctl button { width: 32px; height: 32px; border-radius: var(--raio-sm); border: 1px solid var(--linha); background: transparent;
+.fila-ctl { display: inline-flex; gap: 12px; margin-left: auto; flex: 0 0 auto; }
+.fila-ctl button { position: relative; width: 32px; height: 32px; border-radius: var(--raio-sm); border: 1px solid var(--linha); background: transparent;
   color: var(--txt-suave); font-size: 15px; line-height: 1; display: grid; place-items: center; }
 .fila-ctl button:hover:not(:disabled) { color: var(--txt); border-color: var(--txt-fraco); }
 .fila-ctl button:disabled { opacity: .3; cursor: default; }
@@ -571,3 +578,19 @@ label.campo { display: block; margin: 12px 0 5px; font-size: 13px; color: var(--
   .toolbar > .input-busca { flex: 1 1 280px; }
   .toolbar > #ordenar { flex: 0 0 auto; }
 }
+
+/* ===== Auditoria: contraste, toque e superfícies do navegador ===== */
+.card-abrir { display: block; width: 100%; padding: 0; margin: 0; background: none; border: 0; color: inherit;
+  font: inherit; text-align: left; cursor: pointer; }
+.fila-ctl button::after { content: ""; position: absolute; inset: -6px; }   /* área de toque de 44px sem crescer o desenho */
+.icon-btn { width: 40px; height: 40px; }
+.vt { height: 40px; display: grid; place-items: center; }
+.modal:focus { outline: none; }   /* o foco vai pro diálogo inteiro; o anel aparece nos controles */
+::placeholder { color: var(--txt-fraco); opacity: 1; }
+::selection { background: rgba(var(--acento-rgb), .38); color: var(--txt); }
+input, textarea { caret-color: var(--acento); }
+html { scrollbar-color: var(--linha) var(--bg); }
+:root[data-theme="light"] .obra-status.releasing { color: #1f7a3f; }
+:root[data-theme="light"] .obra-status.finished  { color: #6b3fc4; }
+:root[data-theme="light"] .obra-status.hiatus    { color: #8a5b00; }
+:root[data-theme="light"] .obra-status.cancelled { color: #b8352c; }

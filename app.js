@@ -67,6 +67,11 @@
     plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
     target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
     check: '<polyline points="20 6 9 17 4 12"/>',
+    star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+    arrowup: '<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>',
+    arrowdown: '<line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>',
+    grid: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
+    list: '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',
     sun: '<circle cx="12" cy="12" r="4"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
     moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
     flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
@@ -275,7 +280,7 @@
       <div class="stats-secao">
         <h4>Meta de ${ano}</h4>
         <div class="meta-linha">
-          <input class="input" id="stats-meta" type="number" inputmode="numeric" value="${meta || ""}" placeholder="ex.: 20">
+          <input class="input" id="stats-meta" aria-label="Meta de livros no ano" type="number" inputmode="numeric" value="${meta || ""}" placeholder="ex.: 20">
           <span class="prog-sep">livros/ano</span>
           <button class="btn-primary" id="stats-salvar-meta">Salvar</button>
         </div>
@@ -677,7 +682,7 @@
     $("rapido-corpo").innerHTML = `
       <div class="rapido-prog">
         <button class="rapido-step" id="r-menos" aria-label="menos">−</button>
-        <input class="input" id="r-cur" type="text" inputmode="numeric" value="${cur}">
+        <input class="input" id="r-cur" aria-label="Progresso atual" type="text" inputmode="numeric" value="${cur}">
         <span class="prog-sep">de ${tot || "?"}</span>
         <button class="rapido-step" id="r-mais" aria-label="mais">+</button>
       </div>
@@ -982,8 +987,8 @@
       const proxima = idx === 0 && ui.view === "grid" && naFila && !ui.filtro;
       const destaque = proxima || (idx === 0 && ui.view === "grid" && ui.status === "lendo" && !ui.filtro && temTotal(i));
       const filaCtl = podeOrdenar ? `<span class="fila-ctl">
-          <button type="button" data-mover="-1" aria-label="Subir na fila" title="Subir na fila"${idx === 0 ? " disabled" : ""}>↑</button>
-          <button type="button" data-mover="1" aria-label="Descer na fila" title="Descer na fila"${idx === itens.length - 1 ? " disabled" : ""}>↓</button>
+          <button type="button" data-mover="-1" aria-label="Subir na fila" title="Subir na fila"${idx === 0 ? " disabled" : ""}>${ico("arrowup", 16)}</button>
+          <button type="button" data-mover="1" aria-label="Descer na fila" title="Descer na fila"${idx === itens.length - 1 ? " disabled" : ""}>${ico("arrowdown", 16)}</button>
         </span>` : "";
       const st = STATUS[i.status];
       const pct = Math.round(progresso(i) * 100);
@@ -1008,7 +1013,7 @@
         return `<div class="card" data-id="${i.id}">
           <div class="capa-wrap">${capaHTML(i, "capa")}${temTotal(i) ? `<span class="fita" style="--p:${pct}"><i></i></span>` : ""}</div>
           <div class="card-info">
-            <div class="card-titulo">${esc(i.title)}</div>
+            <button type="button" class="card-abrir"><span class="card-titulo">${esc(i.title)}</span></button>
             <div class="card-autor">${esc(i.authors) || "—"}</div>
             <div class="list-meta">
               <span class="list-badge"><i style="background:${st.cor}"></i>${st.label}</span>
@@ -1029,7 +1034,7 @@
         </div>
         <div class="card-info">
           ${proxima ? `<div class="proxima-rot">Próxima leitura</div>` : ""}
-          <div class="card-titulo">${esc(i.title)}</div>
+          <button type="button" class="card-abrir"><span class="card-titulo">${esc(i.title)}</span></button>
           <div class="card-autor">${esc(i.authors) || "—"}</div>
           ${proxima ? `<button type="button" class="btn-primary btn-comecar" data-comecar>Começar a ler</button>`
             : destaque ? `<div class="destaque-n">${pct}%<small>lido</small></div>${progTxt ? `<div class="card-prog">${progTxt}</div>` : ""}` : progHTML}
@@ -1482,9 +1487,9 @@
       if (ehLivroDigital(it)) {
         // Kindle/e-book: acompanha pela "posição" (Posição X de Y)
         progBloco = `<div class="prog-linha">
-            <input class="input" id="f-pos-cur" type="text" inputmode="numeric" value="${it.pos_atual || 0}">
+            <input class="input" id="f-pos-cur" aria-label="Posição atual" type="text" inputmode="numeric" value="${it.pos_atual || 0}">
             <span class="prog-sep">de</span>
-            <input class="input" id="f-pos-tot" type="text" inputmode="numeric" value="${it.pos_total || ""}" placeholder="total">
+            <input class="input" id="f-pos-tot" aria-label="Total de posições" type="text" inputmode="numeric" value="${it.pos_total || ""}" placeholder="total">
             <span class="prog-sep">posição</span>
           </div>
           <div class="prog-dica">
@@ -1493,9 +1498,9 @@
           </div>`;
       } else {
         progBloco = `<div class="prog-linha">
-            <input class="input" id="f-cur" type="number" inputmode="numeric" value="${it.current_page || 0}">
+            <input class="input" id="f-cur" aria-label="Página atual" type="number" inputmode="numeric" value="${it.current_page || 0}">
             <span class="prog-sep">de</span>
-            <input class="input" id="f-tot" type="number" inputmode="numeric" value="${it.total_pages || ""}" placeholder="total">
+            <input class="input" id="f-tot" aria-label="Total de páginas" type="number" inputmode="numeric" value="${it.total_pages || ""}" placeholder="total">
             <span class="prog-sep">páginas</span>
           </div>
           <div class="prog-dica">
@@ -1511,15 +1516,15 @@
           <button class="link-btn ico-btn" id="f-detectar" type="button">${ico("refresh", 14)} detectar lançados</button>
         </div>` : "";
       progBloco = `<div class="prog-linha">
-          <input class="input" id="f-cur" type="number" inputmode="numeric" value="${it.current_chapter || 0}">
+          <input class="input" id="f-cur" aria-label="Capítulo atual" type="number" inputmode="numeric" value="${it.current_chapter || 0}">
           <span class="prog-sep">de</span>
-          <input class="input" id="f-tot" type="number" inputmode="numeric" value="${it.total_chapters || ""}" placeholder="total">
+          <input class="input" id="f-tot" aria-label="Total de capítulos" type="number" inputmode="numeric" value="${it.total_chapters || ""}" placeholder="total">
           <span class="prog-sep">capítulos</span>
         </div>${dicaDetectar}
         <div class="prog-linha">
-          <input class="input" id="f-curv" type="number" inputmode="numeric" value="${it.current_volume || 0}">
+          <input class="input" id="f-curv" aria-label="Volume atual" type="number" inputmode="numeric" value="${it.current_volume || 0}">
           <span class="prog-sep">de</span>
-          <input class="input" id="f-totv" type="number" inputmode="numeric" value="${it.total_volumes || ""}" placeholder="total">
+          <input class="input" id="f-totv" aria-label="Total de volumes" type="number" inputmode="numeric" value="${it.total_volumes || ""}" placeholder="total">
           <span class="prog-sep">volumes</span>
         </div>`;
     }
@@ -1599,8 +1604,8 @@
 
       <div class="ficha-secao">
         <h4>Avaliação</h4>
-        <div class="estrelas" id="f-estrelas">
-          ${[1,2,3,4,5].map((n) => `<span class="estrela ${it.rating >= n ? "on" : ""}" data-n="${n}">★</span>`).join("")}
+        <div class="estrelas" id="f-estrelas" role="group" aria-label="Avaliação">
+          ${[1,2,3,4,5].map((n) => `<button type="button" class="estrela ${it.rating >= n ? "on" : ""}" data-n="${n}" aria-label="${n} de 5 estrelas" aria-pressed="${it.rating === n}">${ico("star", 26)}</button>`).join("")}
         </div>
       </div>
 
@@ -1768,8 +1773,10 @@
         const novaNota = it.rating === n ? null : n; // clicar de novo limpa
         await Store.update(id, { rating: novaNota });
         it.rating = novaNota;
-        corpo.querySelectorAll(".estrela").forEach((e) =>
-          e.classList.toggle("on", novaNota && Number(e.dataset.n) <= novaNota));
+        corpo.querySelectorAll(".estrela").forEach((e) => {
+          e.classList.toggle("on", !!novaNota && Number(e.dataset.n) <= novaNota);
+          e.setAttribute("aria-pressed", String(novaNota === Number(e.dataset.n)));
+        });
         renderBiblioteca();
       }));
 
@@ -1980,11 +1987,40 @@
   let jaRecarregando = false;
   function recarregar() { if (jaRecarregando) return; jaRecarregando = true; location.reload(); }
 
+  // modais: semântica de diálogo; o foco entra ao abrir e volta pra origem ao fechar
+  function prepararModais() {
+    document.querySelectorAll(".modal-bg").forEach((bg) => {
+      const m = bg.querySelector(".modal");
+      if (!m) return;
+      const tit = m.querySelector(".modal-titulo");
+      if (tit && !tit.id) tit.id = bg.id + "-titulo";
+      m.setAttribute("role", "dialog"); m.setAttribute("aria-modal", "true"); m.tabIndex = -1;
+      if (tit) m.setAttribute("aria-labelledby", tit.id);
+      let origem = null, origemId = null;
+      new MutationObserver(() => {
+        if (!bg.hidden) {
+          if (!m.contains(document.activeElement)) {
+            origem = document.activeElement;
+            origemId = origem && origem.closest ? (origem.closest("[data-id]") || {}).dataset?.id : null;
+          }
+          m.focus({ preventScroll: true });
+        } else if (origem) {
+          // a biblioteca pode ter sido redesenhada: volta pro card da mesma obra
+          const alvo = document.contains(origem) ? origem
+            : origemId && document.querySelector(`[data-id="${CSS.escape(origemId)}"] .card-abrir`);
+          if (alvo) alvo.focus({ preventScroll: true });
+          origem = origemId = null;
+        }
+      }).observe(bg, { attributes: true, attributeFilter: ["hidden"] });
+    });
+  }
+
   async function boot() {
     pintarIcones();          // ícones flat estáticos
     atualizarBotaoTema();    // ícone sol/lua conforme o tema salvo
     { const m = document.getElementById("meta-theme"); if (m) m.content = infoTema(temaAtual()).meta; }
     ligarEventos();
+    prepararModais();
 
     // rede de segurança: qualquer falha assíncrona não tratada vira um aviso
     // (ex.: escrita na nuvem que falhou por conexão) em vez de sumir em silêncio

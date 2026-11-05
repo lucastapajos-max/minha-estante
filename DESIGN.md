@@ -31,6 +31,10 @@ secundário `#4a4f57`, ardósia `#646b75`, carmim `#b32e44` (mais fundo, pra con
 
 Ação principal = botão **cor do texto** (papel no escuro, tinta no claro). O carmim é reservado à fita.
 
+**Carmim como texto pequeno:** o `--acento` puro passa como traço, fita e sublinha (3:1), mas **não como
+letra pequena no escuro** (3.6:1). Texto em carmim usa `--acento-txt` (`#e06a7c` no escuro, 5.8:1; no claro é o
+próprio `#b32e44`). Itens ativos de navegação ficam na cor do texto, com o traço carmim como marcador.
+
 ## 3. Tipografia
 
 - **Bricolage Grotesque** (variável, 300–800) em tudo. Hospedada em `fonts/` (PWA offline, CSP `font-src 'self'`).

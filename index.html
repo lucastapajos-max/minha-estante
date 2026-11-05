@@ -18,6 +18,7 @@
       document.documentElement.setAttribute("data-theme", t);
     })();
   </script>
+  <link rel="preload" href="fonts/bricolage-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -30,8 +31,8 @@
       <img class="login-logo" src="icon.svg" width="64" height="64" alt="">
       <div class="login-titulo">Estante</div>
       <div class="login-sub">Entre para acessar sua biblioteca</div>
-      <input id="login-email" class="input" type="email" inputmode="email" placeholder="E-mail" autocomplete="username">
-      <input id="login-senha" class="input" type="password" placeholder="Senha" autocomplete="current-password">
+      <input id="login-email" class="input" type="email" inputmode="email" placeholder="E-mail" aria-label="E-mail" autocomplete="username">
+      <input id="login-senha" class="input" type="password" placeholder="Senha" aria-label="Senha" autocomplete="current-password">
       <div class="login-erro" id="login-erro"></div>
       <button class="btn-primary login-btn" id="btn-login">Entrar</button>
     </div>
@@ -55,7 +56,7 @@
     <!-- ===== Cabeçalho ===== -->
     <header class="topbar">
       <div class="brand">
-        <span class="brand-name">Estante</span>
+        <h1 class="brand-name">Estante</h1>
         <span class="brand-sus" id="brand-sus"></span>
       </div>
       <div class="topbar-actions">
@@ -99,8 +100,8 @@
         <option value="conclusao_asc">Conclusão: antiga</option>
       </select>
       <div class="view-toggle" id="view-toggle">
-        <button class="vt is-active" data-view="grid" aria-label="Grade">▦</button>
-        <button class="vt" data-view="list" aria-label="Lista">≣</button>
+        <button class="vt is-active" data-view="grid" aria-label="Grade" data-ico="grid" data-size="16"></button>
+        <button class="vt" data-view="list" aria-label="Lista" data-ico="list" data-size="16"></button>
       </div>
       <button class="btn-ghost btn-filtros ico-btn" id="btn-filtros" aria-label="Filtros avançados"><span data-ico="sliders" data-size="15"></span> Filtros</button>
     </div>
