@@ -3,6 +3,7 @@
 # --- Segurança (a CSP também vai no <meta> do index.html, pra valer mesmo
 #     rodando local; mantenha os dois em sincronia ao mexer nas APIs) ---
 /*
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
