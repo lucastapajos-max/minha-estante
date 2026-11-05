@@ -957,6 +957,20 @@
     // status sobre a capa só faz sentido quando o filtro mistura status ("Todos")
     wrap.className = "biblioteca " + ui.view + (ui.status === "todos" ? " mostra-status" : "");
     $("vazio").hidden = itens.length > 0;
+    if (!itens.length) {   // estado vazio diz o que fazer, conforme o filtro
+      const filtrando = ui.filtro || Object.values(ui.adv).some(Boolean);
+      const [t, sub] = filtrando ? ["Nada encontrado", "Tente outro termo ou limpe os filtros."]
+        : {
+          todos: [`Nenhum ${KIND[ui.kind].label.toLowerCase()} por aqui ainda`, "Toque em + para buscar e cadastrar o primeiro."],
+          lendo: ["Nada em leitura agora", "Comece algo da sua fila em Quero ler, ou toque em + para adicionar."],
+          quero_ler: ["Sua fila está vazia", "Toque em + e marque como Quero ler para montar a fila."],
+          lido: ["Nenhuma leitura concluída ainda", "Quando terminar algo, ele aparece aqui."],
+          pausado: ["Nada pausado", "Leituras que você pausar ficam guardadas aqui."],
+          abandonado: ["Nada abandonado", "Obras que você largar ficam aqui, sem culpa."],
+        }[ui.status];
+      $("vazio-titulo").textContent = t;
+      $("vazio-sub").textContent = sub;
+    }
     // sussurro sob o nome do app: "4 mangás em leitura"
     { const nomes = { livro: ["livro", "livros"], quadrinho: ["quadrinho", "quadrinhos"], manga: ["mangá", "mangás"] };
       const suf = { todos: "na estante", lendo: "em leitura", quero_ler: "na fila", lido: "lido", pausado: "pausado", abandonado: "abandonado" }[ui.status] || "";
@@ -1137,7 +1151,7 @@
             await Store.add(item);
             $("modal-add").hidden = true;
             // mostra o item recém-criado na visão certa (evita "sumir" na aba Lendo)
-            ui.status = status; $("filtro-status").value = status; salvarNav();
+            ui.status = status; marcarStatus(); salvarNav();
             toast(item.total_chapters ? `Adicionado ✓ (${item.total_chapters} caps lançados)` : "Adicionado à estante ✓");
             renderBiblioteca();
           } catch (err) {
@@ -1788,11 +1802,12 @@
         renderBiblioteca();
       }));
 
-    // filtro de status (dropdown #4)
-    $("filtro-status").addEventListener("change", (e) => {
-      ui.status = e.target.value;
-      salvarNav();
-      renderBiblioteca();
+    // filtro de status (texto)
+    $("filtro-status").addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-st]");
+      if (!b || b.dataset.st === ui.status) return;
+      ui.status = b.dataset.st;
+      marcarStatus(); salvarNav(); renderBiblioteca();
     });
 
     // ordenação
@@ -1915,6 +1930,11 @@
     }
   }
 
+  // filtro de status em texto: marca o botão ativo
+  function marcarStatus() {
+    $("filtro-status").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.st === ui.status)));
+  }
+
   // guarda/retoma a navegação (aba, filtro, ordem, grade/lista, tela) entre refreshs
   function salvarNav() {
     try {
@@ -1938,7 +1958,7 @@
     ui.ordem = nav.ordem || "recentes";
     // sincroniza a UI com o estado restaurado
     $("tabs").querySelectorAll(".tab").forEach((t) => t.classList.toggle("is-active", t.dataset.kind === ui.kind));
-    $("filtro-status").value = ui.status;
+    marcarStatus();
     $("ordenar").value = ui.ordem;
     $("view-toggle").querySelectorAll(".vt").forEach((v) => v.classList.toggle("is-active", v.dataset.view === ui.view));
     return TELAS.includes(nav.tela) ? nav.tela : "biblioteca";

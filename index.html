@@ -78,18 +78,19 @@
       <button class="tab" data-kind="manga">Mangás</button>
     </nav>
 
+    <!-- filtro de status em texto (V2) -->
+    <div class="filtro-status" id="filtro-status" role="group" aria-label="Filtrar por status">
+      <button type="button" data-st="lendo" aria-pressed="true">Lendo</button>
+      <button type="button" data-st="quero_ler" aria-pressed="false">Quero ler</button>
+      <button type="button" data-st="lido" aria-pressed="false">Lido</button>
+      <button type="button" data-st="pausado" aria-pressed="false">Pausado</button>
+      <button type="button" data-st="abandonado" aria-pressed="false">Abandonado</button>
+      <button type="button" data-st="todos" aria-pressed="false">Todos</button>
+    </div>
+
     <!-- ===== Barra de filtros ===== -->
     <div class="toolbar">
-      <input type="search" id="busca-local" class="input-busca" placeholder="Filtrar na estante…" autocomplete="off">
-      <!-- #4 seletor de status: entre o filtro e o toggle de visão -->
-      <select id="filtro-status" class="select-status" autocomplete="off">
-        <option value="todos">Todos os status</option>
-        <option value="lendo" selected>Lendo</option>
-        <option value="quero_ler">Quero ler</option>
-        <option value="lido">Lido</option>
-        <option value="pausado">Pausado</option>
-        <option value="abandonado">Abandonado</option>
-      </select>
+      <input type="search" id="busca-local" class="input-busca" placeholder="Filtrar na estante…" autocomplete="off" aria-label="Filtrar na estante">
       <select id="ordenar" class="select-status" autocomplete="off" aria-label="Ordenar">
         <option value="recentes">Recentes</option>
         <option value="az">Título A–Z</option>
@@ -124,8 +125,8 @@
     <!-- Estado vazio -->
     <div class="vazio" id="vazio" hidden>
       <div class="vazio-emoji" data-ico="book" data-size="46"></div>
-      <div class="vazio-titulo">Sua estante está vazia por aqui</div>
-      <div class="vazio-sub">Toque em <b>+ Adicionar</b> para buscar e cadastrar seu primeiro título.</div>
+      <div class="vazio-titulo" id="vazio-titulo">Sua estante está vazia por aqui</div>
+      <div class="vazio-sub" id="vazio-sub">Toque em <b>+</b> para buscar e cadastrar seu primeiro título.</div>
     </div>
     </div><!-- /view-biblioteca -->
 

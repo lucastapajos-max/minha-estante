@@ -545,3 +545,29 @@ label.campo { display: block; margin: 12px 0 5px; font-size: 13px; color: var(--
   .rt-tela > * { animation: rtIn .45s ease both; }
   @keyframes rtIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 }
+
+/* ===== Filtro de status em texto (V2) ===== */
+.filtro-status { display: flex; gap: 18px; overflow-x: auto; scrollbar-width: none; padding: 0 24px 12px 0; margin-top: -2px;
+  -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); }  /* esmaecido = dá pra rolar */
+@media (min-width: 760px) { .filtro-status { -webkit-mask-image: none; mask-image: none; } }
+.filtro-status::-webkit-scrollbar { display: none; }
+.filtro-status button { flex: 0 0 auto; background: none; border: 0; padding: 6px 0; font-size: 14px; font-weight: 400;
+  color: var(--txt-fraco); white-space: nowrap; }
+.filtro-status button:hover { color: var(--txt-suave); }
+.filtro-status button[aria-pressed="true"] { color: var(--txt); font-weight: 600; }
+
+/* ===== Acessibilidade ===== */
+:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+
+/* barra de filtros: busca em cima (linha inteira), ordenação + visão + filtros numa linha só */
+.toolbar > .input-busca { flex: 1 1 100%; }
+.toolbar > #ordenar { flex: 1 1 0; min-width: 0; }
+@media (min-width: 760px) {
+  .toolbar { flex-wrap: nowrap; }
+  .toolbar > .input-busca { flex: 1 1 280px; }
+  .toolbar > #ordenar { flex: 0 0 auto; }
+}
