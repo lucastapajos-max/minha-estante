@@ -239,8 +239,8 @@
       }
     });
     const dias = diasPorPeriodo[statsPeriodo];
-    const mediaPags = (volPags / dias).toFixed(1).replace(".0", "");
-    const mediaCaps = (volCaps / dias).toFixed(1).replace(".0", "");
+    const media = (v) => (v / dias).toLocaleString("pt-BR", { maximumFractionDigits: 1 });   // 4,4 (vírgula)
+    const mediaPags = media(volPags), mediaCaps = media(volCaps);
     const rotuloPeriodo = { semana: "nos últimos 7 dias", mes: `em ${MESES[mesAtual]}`, ano: `em ${ano}` }[statsPeriodo];
 
     // #1 sequência de leitura (dias seguidos com sessão)
@@ -284,7 +284,7 @@
         </div>
         ${meta ? `
           <div class="prog-barra" style="margin-top:14px"><i style="width:${pctMeta}%"></i></div>
-          <div class="meta-txt"><b>${lidosAno.length}</b> de <b>${meta}</b> livros — ${pctMeta}%
+          <div class="meta-txt"><b>${lidosAno.length}</b> de <b>${meta}</b> livros, ${pctMeta}%
             ${lidosAno.length >= meta ? ". Meta batida." : ` (faltam ${meta - lidosAno.length})`}</div>
         ` : `<div class="meta-txt">Defina uma meta pra acompanhar seu progresso do ano.</div>`}
       </div>
@@ -431,8 +431,8 @@
     el.innerHTML = `<span class="rt-fita" aria-hidden="true"><i></i></span>
       <button class="rt-fechar" type="button" aria-label="Fechar">${ico("plus", 22)}</button>
       <div class="rt-tela" aria-live="polite"></div>
-      <button class="rt-nav rt-ant" type="button" aria-label="Anterior"></button>
-      <button class="rt-nav rt-prox" type="button" aria-label="Próximo"></button>`;
+      <button class="rt-nav rt-ant" type="button" aria-label="Anterior" tabindex="-1"></button>
+      <button class="rt-nav rt-prox" type="button" aria-label="Próximo" tabindex="-1"></button>`;
     document.body.appendChild(el);
     document.body.style.overflow = "hidden";   // a página de trás não rola nem mostra barra
     const tela = el.querySelector(".rt-tela");
@@ -969,6 +969,8 @@
 
   async function renderBiblioteca() {
     ariaAtivo();
+    // filtro avançado ligado esconde títulos: o botão avisa mesmo com o painel fechado
+    $("btn-filtros").classList.toggle("tem-filtro", Object.values(ui.adv).some(Boolean));
     const wrap = $("biblioteca");
     let itens = await Store.list(ui.kind);
     if (ui.kind === "manga") completarLancamento(itens);   // em segundo plano
@@ -1048,11 +1050,11 @@
       const pctTxt = temTotal(i) ? `<span class="prog-pctinline">${pct}%</span>` : "";
       const progHTML = ehDigital
         ? (temTotal(i) ? `<div class="card-prog"><span class="prog-pctinline">${pct}% lido</span></div>` : "")
-        : (progTxt ? `<div class="card-prog">${progTxt}${pctTxt ? " · " + pctTxt : ""}</div>` : "");
+        : (progTxt ? `<div class="card-prog">${progTxt}${pctTxt}</div>` : "");
       // versão inline pro modo lista (digital mostra "% lido"; o resto, "pág/cap X/Y · %")
       const listProg = ehDigital
         ? (temTotal(i) ? `<span class="list-prog"><span class="prog-pctinline">${pct}% lido</span></span>` : "")
-        : (progTxt ? `<span class="list-prog">${progTxt}${pctTxt ? " · " + pctTxt : ""}</span>` : "");
+        : (progTxt ? `<span class="list-prog">${progTxt}${pctTxt}</span>` : "");
       const fmtBadge = i.format
         ? `<span class="fmt-badge">${ico(i.format === "fisico" ? "bookopen" : "phone", 13)} ${i.format === "fisico" ? "Físico" : "Digital"}</span>` : "";
       const colNome = i.collection_id ? nomeColecao(i.collection_id) : "";
@@ -1149,7 +1151,7 @@
     fecharModais();
     $("add-input").value = "";
     $("add-resultados").innerHTML = "";
-    $("add-titulo").textContent = "Adicionar — " + KIND[ui.kind].label;
+    $("add-titulo").textContent = "Adicionar " + KIND[ui.kind].label.toLowerCase();
     $("add-hint").textContent = ui.kind === "manga"
       ? "Buscando na MangaBaka."
       : "Edições em português primeiro. Dica: cole um ISBN (10 ou 13 dígitos) pra busca exata.";
@@ -1184,7 +1186,8 @@
         div.innerHTML = `${capa}
           <div class="res-corpo">
             <div class="res-titulo">${esc(r.title)}</div>
-            <div class="res-sub">${esc(r.authors) || "Autor desconhecido"}${meta ? " · " + meta : ""}${r.ano ? " · edição de " + r.ano : ""}</div>
+            <div class="res-sub">${esc(r.authors) || "Autor desconhecido"}</div>
+            ${meta || r.ano ? `<div class="res-meta">${[meta, r.ano && "edição de " + r.ano].filter(Boolean).join(", ")}</div>` : ""}
             ${badge}
           </div>
           <button class="btn-primary res-add">Adicionar</button>`;
@@ -1343,7 +1346,7 @@
     let dados;
     try { dados = JSON.parse(await file.text()); }
     catch { st.textContent = "Arquivo inválido (não é um JSON)."; return; }
-    if (!dados || !Array.isArray(dados.items)) { st.textContent = "Backup sem livros — arquivo não reconhecido."; return; }
+    if (!dados || !Array.isArray(dados.items)) { st.textContent = "Arquivo não reconhecido: esse backup não tem livros."; return; }
     try {
       // 1) coleções: cria as que faltam (por nome) e mapeia id antigo → novo
       const colAtuais = await Store.listCollections();
@@ -1408,7 +1411,7 @@
       ${progFields}
       <label class="campo">Formato</label>
       <select class="input" id="m-format">
-        <option value="" ${ed && !ed.format ? "selected" : ""}>— Não definido</option>
+        <option value="" ${ed && !ed.format ? "selected" : ""}>Não definido</option>
         <option value="fisico" ${ed && ed.format === "fisico" ? "selected" : ""}>Físico</option>
         <option value="digital" ${ed && ed.format === "digital" ? "selected" : ""}>Digital</option>
       </select>
@@ -1595,10 +1598,10 @@
       <div class="ficha-secao">
         <h2>Notificações</h2>
         <button class="${it.notify ? "btn-primary" : "btn-ghost"}" id="f-notify">
-          ${ico("bell", 15)} ${it.notify ? "Avisos ligados — desligar" : "Avisar quando sair capítulo novo"}
+          ${ico("bell", 15)} ${it.notify ? "Desligar avisos de capítulo" : "Avisar quando sair capítulo novo"}
         </button>
         <div class="prog-dica">${it.notify
-          ? `Vigiando a partir do capítulo ${it.last_notified_chapter || "?"}. Você recebe um push quando sair um novo — mesmo com o app fechado.`
+          ? `Vigiando a partir do capítulo ${it.last_notified_chapter || "?"}. Você recebe um push quando sair um novo, mesmo com o app fechado.`
           : "Recebe um push (Android/desktop) assim que um novo capítulo for lançado."}</div>
       </div>` : "";
 
@@ -1644,7 +1647,7 @@
         <div class="status-select" id="f-formato">
           <button class="status-op ico-btn ${it.format === "fisico" ? "is-active" : ""}" data-fmt="fisico">${ico("bookopen", 15)} Físico</button>
           <button class="status-op ico-btn ${it.format === "digital" ? "is-active" : ""}" data-fmt="digital">${ico("phone", 15)} Digital</button>
-          <button class="status-op ${!it.format ? "is-active" : ""}" data-fmt="">— Não definido</button>
+          <button class="status-op ${!it.format ? "is-active" : ""}" data-fmt="">Não definido</button>
         </div>
       </div>
 
@@ -1652,7 +1655,7 @@
         <h2>Coleção / Saga</h2>
         <div class="colecao-linha">
           <select class="input" id="f-colecao">
-            <option value="">— Nenhuma</option>
+            <option value="">Nenhuma</option>
             ${colecoes.map((c) => `<option value="${esc(c.id)}" ${it.collection_id === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}
           </select>
           <button class="btn-ghost" id="f-nova-colecao" type="button">＋ Nova</button>
@@ -1794,7 +1797,7 @@
         if (info.release_status) it.release_status = info.release_status;
         toast(`Último lançado: capítulo ${info.ultimo}`);
       } else {
-        toast("Não encontrei — preencha manualmente");
+        toast("Não encontrei. Preencha o total à mão.");
       }
     });
 
@@ -1903,6 +1906,7 @@
       const p = $("filtros-avancados");
       p.hidden = !p.hidden;
       $("btn-filtros").classList.toggle("is-active", !p.hidden);
+      $("btn-filtros").setAttribute("aria-expanded", String(!p.hidden));
     });
     const mapAdv = { "fa-genero": "genero", "fa-formato": "formato", "fa-ano": "ano", "fa-autor": "autor", "fa-colecao": "colecao" };
     Object.keys(mapAdv).forEach((fid) =>

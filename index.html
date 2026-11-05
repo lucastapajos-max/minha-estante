@@ -52,7 +52,7 @@
 
   <main id="app" hidden>
     <!-- aviso de conexão -->
-    <div id="offline-banner" hidden>Sem conexão — suas alterações podem não salvar até voltar a internet.</div>
+    <div id="offline-banner" hidden>Sem conexão. Suas alterações podem não salvar até a internet voltar.</div>
     <!-- ===== Cabeçalho ===== -->
     <header class="topbar">
       <div class="brand">
@@ -92,6 +92,11 @@
     <!-- ===== Barra de filtros ===== -->
     <div class="toolbar">
       <input type="search" id="busca-local" class="input-busca" placeholder="Filtrar na estante…" autocomplete="off" aria-label="Filtrar na estante">
+      <button class="btn-ghost btn-filtros ico-btn" id="btn-filtros" aria-expanded="false" aria-controls="filtros-avancados"><span data-ico="sliders" data-size="15"></span> Filtros</button>
+    </div>
+
+    <!-- ordem, grade/lista e filtros avançados ficam juntos atrás do botão: as capas sobem -->
+    <div class="filtros-avancados" id="filtros-avancados" hidden>
       <select id="ordenar" class="select-status" autocomplete="off" aria-label="Ordenar">
         <option value="recentes">Recentes</option>
         <option value="az">Título A–Z</option>
@@ -103,11 +108,6 @@
         <button class="vt is-active" data-view="grid" aria-label="Grade" data-ico="grid" data-size="16"></button>
         <button class="vt" data-view="list" aria-label="Lista" data-ico="list" data-size="16"></button>
       </div>
-      <button class="btn-ghost btn-filtros ico-btn" id="btn-filtros" aria-label="Filtros avançados"><span data-ico="sliders" data-size="15"></span> Filtros</button>
-    </div>
-
-    <!-- #10 filtros avançados -->
-    <div class="filtros-avancados" id="filtros-avancados" hidden>
       <select id="fa-genero" class="select-status"></select>
       <select id="fa-formato" class="select-status">
         <option value="">Formato: todos</option>
