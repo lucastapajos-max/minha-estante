@@ -332,6 +332,7 @@
           ${genTopAno ? `<div class="retro-linha">Gênero do ano: <b>${esc(genTopAno[0])}</b></div>` : ""}
           ${autTopAno && autTopAno[1] > 1 ? `<div class="retro-linha">Autor mais lido: <b>${esc(autTopAno[0])}</b> (${autTopAno[1]} livros)</div>` : ""}
           ${mesTop ? `<div class="retro-linha">Mês mais forte: <b>${mesTop}</b></div>` : ""}
+          <button class="btn-primary" id="btn-retro" style="margin-top:12px">Ver retrospectiva de ${ano}</button>
         </div>` : `<div class="meta-txt">Termine alguns livros em ${ano} pra ver sua retrospectiva.</div>`}
       </div>
 
@@ -375,6 +376,127 @@
     };
     $("periodo-toggle").querySelectorAll("button").forEach((b) =>
       b.addEventListener("click", () => { statsPeriodo = b.dataset.p; renderStats(); }));
+
+    // retrospectiva: reaproveita os números já calculados acima
+    const capsAno = sessoes.filter((s) => s.unit === "capitulos" && new Date(s.date) >= inicioAno)
+      .reduce((a, s) => a + (s.amount || 0), 0);
+    const btnRetro = $("btn-retro");
+    if (btnRetro) btnRetro.onclick = () => abrirRetro({
+      ano, total: lidosAno.length, paginas: pagesAno, capitulos: capsAno,
+      livros: lidosAno.filter((i) => i.kind === "livro").length,
+      mangas: lidosAno.filter((i) => i.kind === "manga").length,
+      favorito, genero: genTopAno && genTopAno[0],
+      mes: mesTop ? MESES_LONGO[mesTopIdx].replace(/^./, (c) => c.toUpperCase()) : null, mesN: porMes[mesTopIdx], maiorStreak,
+    });
+  }
+
+  // ============================================================
+  //  RETROSPECTIVA DO ANO (telas cheias + imagem pra compartilhar)
+  // ============================================================
+  const plural = (n, um, varios) => `${n.toLocaleString("pt-BR")} ${n === 1 ? um : varios}`;
+
+  function telasRetro(d) {
+    const t = [];
+    t.push(`<p class="rt-sus">Seu ano na Estante</p><p class="rt-grito rt-ano">${d.ano}</p><p class="rt-dica">Toque para continuar</p>`);
+    const partes = [d.livros && plural(d.livros, "livro", "livros"), d.mangas && plural(d.mangas, "mangá", "mangás")].filter(Boolean);
+    t.push(`<p class="rt-grito">${d.total}</p><p class="rt-txt">${d.total === 1 ? "obra concluída" : "obras concluídas"}</p>
+      ${partes.length ? `<p class="rt-sus">${partes.join(" e ")}</p>` : ""}
+      ${d.paginas ? `<p class="rt-sus">${plural(d.paginas, "página", "páginas")} de livro</p>` : ""}`);
+    if (d.capitulos) t.push(`<p class="rt-grito">${d.capitulos.toLocaleString("pt-BR")}</p><p class="rt-txt">capítulos de mangá lidos</p>`);
+    if (d.favorito) {
+      const f = d.favorito, n = Math.round(clampNota(f.rating) || 0);
+      t.push(`${f.cover_url ? `<div class="rt-fundo" style="--img:url(&quot;${esc(capaURL(f.cover_url))}&quot;)"></div>
+          <img class="rt-capa" src="${esc(capaURL(f.cover_url))}" alt="">` : ""}
+        <p class="rt-sus">Seu favorito</p><p class="rt-titulo">${esc(f.title)}</p>
+        <p class="rt-sus">${esc(f.authors || "")}</p><p class="rt-estrelas" aria-label="${n} de 5 estrelas">${"★".repeat(n)}${"☆".repeat(5 - n)}</p>`);
+    }
+    if (d.genero) t.push(`<p class="rt-sus">O gênero do ano</p><p class="rt-grito rt-palavra">${esc(d.genero)}</p>`);
+    if (d.mes) t.push(`<p class="rt-sus">Seu mês mais forte</p><p class="rt-grito rt-palavra">${d.mes}</p>
+      <p class="rt-txt">${plural(d.mesN, "obra concluída", "obras concluídas")}</p>
+      ${d.maiorStreak > 1 ? `<p class="rt-sus">Sua maior sequência: ${d.maiorStreak} dias seguidos lendo</p>` : ""}`);
+    t.push(`<p class="rt-sus">Seu ${d.ano} em uma imagem</p><img class="rt-preview" id="rt-preview" alt="Resumo de ${d.ano}">
+      <button class="btn-primary rt-share" id="rt-share" type="button">Compartilhar imagem</button>`);
+    return t;
+  }
+
+  function abrirRetro(d) {
+    const telas = telasRetro(d);
+    let i = 0;
+    const el = document.createElement("div");
+    el.className = "retro"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true");
+    el.setAttribute("aria-label", `Retrospectiva de ${d.ano}`);
+    el.innerHTML = `<span class="rt-fita" aria-hidden="true"><i></i></span>
+      <button class="rt-fechar" type="button" aria-label="Fechar">${ico("plus", 22)}</button>
+      <div class="rt-tela" aria-live="polite"></div>
+      <button class="rt-nav rt-ant" type="button" aria-label="Anterior"></button>
+      <button class="rt-nav rt-prox" type="button" aria-label="Próximo"></button>`;
+    document.body.appendChild(el);
+    document.body.style.overflow = "hidden";   // a página de trás não rola nem mostra barra
+    const tela = el.querySelector(".rt-tela");
+    const mostrar = () => {
+      tela.innerHTML = telas[i];
+      el.style.setProperty("--p", Math.round(((i + 1) / telas.length) * 100));  // a fita cresce a cada tela
+      el.querySelector(".rt-ant").hidden = i === 0;
+      el.querySelector(".rt-prox").hidden = i === telas.length - 1;
+      if (i === telas.length - 1) prepararImagem(d);
+    };
+    const ir = (n) => { if (n >= 0 && n < telas.length) { i = n; mostrar(); } };
+    const fechar = () => { document.removeEventListener("keydown", teclas); document.body.style.overflow = ""; el.remove(); };
+    const teclas = (e) => {
+      if (e.key === "Escape") fechar();
+      else if (e.key === "ArrowRight") ir(i + 1);
+      else if (e.key === "ArrowLeft") ir(i - 1);
+    };
+    el.querySelector(".rt-fechar").onclick = fechar;
+    el.querySelector(".rt-ant").onclick = () => ir(i - 1);
+    el.querySelector(".rt-prox").onclick = () => ir(i + 1);
+    document.addEventListener("keydown", teclas);
+    mostrar();
+    el.querySelector(".rt-prox").focus();
+  }
+
+  // imagem 1080×1920 (formato story), só tipografia + fita: capas de outros sites "sujariam"
+  // o canvas (CORS) e o navegador bloquearia a exportação
+  async function prepararImagem(d) {
+    await Promise.all(["800 100px", "300 40px", "500 40px"].map((f) => document.fonts.load(`${f} "Bricolage Grotesque"`)));
+    const W = 1080, H = 1920, c = document.createElement("canvas");
+    c.width = W; c.height = H;
+    const g = c.getContext("2d");
+    const F = (peso, px) => `${peso} ${px}px "Bricolage Grotesque", sans-serif`;
+    g.fillStyle = "#121316"; g.fillRect(0, 0, W, H);
+    // a fita, descendo pela direita até o fim (ano completo)
+    g.fillStyle = "#c4384e";
+    g.beginPath(); g.moveTo(930, 0); g.lineTo(978, 0); g.lineTo(978, 1500); g.lineTo(954, 1474); g.lineTo(930, 1500); g.closePath(); g.fill();
+    g.fillStyle = "#ecedef"; g.font = F(800, 72); g.fillText("Estante", 90, 180);
+    g.fillStyle = "#8a919b"; g.font = F(300, 40); g.fillText("Meu ano de leitura", 90, 245);
+    g.fillStyle = "#ecedef"; g.font = F(800, 300); g.fillText(String(d.ano), 70, 590);
+    const corta = (txt, max) => { let t = txt; while (g.measureText(t).width > max && t.length > 1) t = t.slice(0, -1); return t === txt ? t : t.trimEnd() + "…"; };
+    const linhas = [
+      [plural(d.total, "obra concluída", "obras concluídas"), [d.livros && plural(d.livros, "livro", "livros"), d.mangas && plural(d.mangas, "mangá", "mangás")].filter(Boolean).join(" e ")],
+      d.paginas ? [plural(d.paginas, "página", "páginas"), "de livro"] : null,
+      d.capitulos ? [plural(d.capitulos, "capítulo", "capítulos"), "de mangá"] : null,
+      d.favorito ? [d.favorito.title, "meu favorito"] : null,
+      d.genero ? [d.genero, "gênero do ano"] : null,
+      d.mes ? [d.mes, "mês mais forte"] : null,
+    ].filter(Boolean);
+    let y = 760;
+    for (const [grande, sus] of linhas) {
+      g.fillStyle = "#ecedef"; g.font = F(800, 70); g.fillText(corta(grande, 790), 90, y);
+      g.fillStyle = "#8a919b"; g.font = F(300, 40); g.fillText(sus, 90, y + 56);
+      y += 170;
+    }
+    const prev = $("rt-preview"), btn = $("rt-share");
+    if (!prev) return;   // usuário já saiu da última tela
+    prev.src = c.toDataURL("image/png");
+    btn.onclick = () => c.toBlob(async (blob) => {
+      const arq = new File([blob], `estante-${d.ano}.png`, { type: "image/png" });
+      if (navigator.canShare && navigator.canShare({ files: [arq] })) {
+        try { await navigator.share({ files: [arq], title: `Meu ${d.ano} na Estante` }); } catch {}   // cancelar não é erro
+      } else {
+        baixarArquivo(arq.name, blob, "image/png");
+        toast("Imagem salva");
+      }
+    }, "image/png");
   }
 
   // troca entre as abas do menu inferior (biblioteca / estatísticas / histórico)
