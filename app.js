@@ -860,6 +860,8 @@
     if (u.includes("books.google.") && u.includes("/books/content") && !u.includes("fife=")) {
       return u.replace("http://", "https://").replace("&edge=curl", "") + "&fife=w600";
     }
+    // Amazon, imagem da página do produto (/images/I/…): "._SY466_" e afins reduzem o tamanho; sem eles vem a original
+    if (/amazon\.com\/images\/I\//.test(u)) return u.replace(/\._[^/]*_(?=\.(jpe?g|png|webp)$)/i, "");
     // Open Library: tamanho M (~180px) → L
     if (u.includes("covers.openlibrary.org/") && /-M\.jpg/.test(u)) u = u.replace(/-M\.jpg/, "-L.jpg");
     if (u.includes("covers.openlibrary.org/b/isbn/") && !u.includes("default=false")) {
