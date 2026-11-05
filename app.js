@@ -1184,7 +1184,7 @@
         div.innerHTML = `${capa}
           <div class="res-corpo">
             <div class="res-titulo">${esc(r.title)}</div>
-            <div class="res-sub">${esc(r.authors) || "Autor desconhecido"}${meta ? " · " + meta : ""}</div>
+            <div class="res-sub">${esc(r.authors) || "Autor desconhecido"}${meta ? " · " + meta : ""}${r.ano ? " · edição de " + r.ano : ""}</div>
             ${badge}
           </div>
           <button class="btn-primary res-add">Adicionar</button>`;

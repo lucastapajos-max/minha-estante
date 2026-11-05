@@ -104,6 +104,7 @@ const APIs = (() => {
         total_chapters: null, total_volumes: null,
         source: "google_books", external_id: v.id || "",
         language: info.language || "",
+        ano: parseInt(String(info.publishedDate || "").slice(0, 4)) || null,   // ano desta edição
       };
     });
   }
@@ -112,7 +113,7 @@ const APIs = (() => {
   async function openLibrary(termo, lingua = "por") {
     // "language:por" na consulta faz a OL devolver a edição naquele idioma (título, ISBN e capa da edição)
     const url = "https://openlibrary.org/search.json?limit=12&fields=key,title,author_name,cover_i,number_of_pages_median,subject,"
-      + "editions,editions.title,editions.isbn,editions.cover_i&q=" + encodeURIComponent(termo + (lingua ? " language:" + lingua : ""));
+      + "editions,editions.title,editions.isbn,editions.cover_i,editions.publish_date&q=" + encodeURIComponent(termo + (lingua ? " language:" + lingua : ""));
     const r = await fetchT(url);
     if (!r.ok) throw new Error("openlibrary " + r.status);
     const j = await r.json();
@@ -130,6 +131,7 @@ const APIs = (() => {
       total_pages: d.number_of_pages_median || null,
       total_chapters: null, total_volumes: null,
       language: lingua === "por" ? "pt" : "",
+      ano: parseInt((String((ed.publish_date || [])[0] || "").match(/\d{4}/) || [])[0]) || null,
       source: "google_books", external_id: "",
     }; });
   }
@@ -151,12 +153,14 @@ const APIs = (() => {
     ]);
     const ehPt = (x) => /^pt/i.test(x.language || "");   // Google manda "pt" ou "pt-BR"
     const lista = await melhorarCapas([pt.filter(ehPt), ol, geral.filter(ehPt), pt, geral].reduce(mesclar, []).slice(0, 15));
-    // relevância: bate com o que foi digitado + edição em português + capa atual na Amazon (sinal de edição à venda no Brasil)
+    // relevância: bate com o que foi digitado + edição em português
     const norm = (t) => String(t || "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
     const palavras = norm(termo).split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 2);
     const pontos = (x) => (palavras.length && palavras.every((w) => norm(x.title + " " + x.authors).includes(w)) ? 1 : 0)
-      + (ehPt(x) ? 1 : 0) + (x.cover_url.includes("media-amazon") ? 1 : 0);
-    return lista.sort((a, b) => pontos(b) - pontos(a));   // sort estável: empate mantém a ordem acima
+      + (ehPt(x) ? 1 : 0);
+    const amazon = (x) => (x.cover_url.includes("media-amazon") ? 1 : 0);
+    // relevância → edição mais recente → capa atual da Amazon (sort estável: empate mantém a ordem acima)
+    return lista.sort((a, b) => (pontos(b) - pontos(a)) || ((b.ano || 0) - (a.ano || 0)) || (amazon(b) - amazon(a)));
   }
 
   // #3 ISBN: detecção e busca exata por ISBN-10 / ISBN-13
