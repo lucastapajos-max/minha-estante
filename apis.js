@@ -152,7 +152,7 @@ const APIs = (() => {
       openLibrary(termo).catch(() => []),
     ]);
     const ehPt = (x) => /^pt/i.test(x.language || "");   // Google manda "pt" ou "pt-BR"
-    const lista = await melhorarCapas([pt.filter(ehPt), ol, geral.filter(ehPt), pt, geral].reduce(mesclar, []).slice(0, 15));
+    const lista = await melhorarCapas([pt.filter(ehPt), ol, geral.filter(ehPt), pt, geral].reduce(mesclar, []).slice(0, 20));
     // relevância: bate com o que foi digitado + edição em português
     const norm = (t) => String(t || "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
     const palavras = norm(termo).split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 2);
@@ -160,18 +160,9 @@ const APIs = (() => {
     // prefixo do ISBN diz o país da editora: 978-85 / 978-65 = Brasil (978-972 / 978-989 = Portugal)
     const brasil = (x) => (/^978(85|65)/.test(x.isbn || "") ? 1 : 0);
     const pontos = (x) => (palavras.length && palavras.every((w) => norm(x.title + " " + x.authors).includes(w)) ? 1 : 0)
-      + (ehPt(x) ? 1 : 0) + brasil(x) + amazon(x);
-    // uma linha por livro (mesmo título sem o complemento entre parênteses/travessão + mesmo autor);
-    // entre as edições fica a brasileira, a mais recente com capa, e a capa atual da Amazon como desempate
-    const obra = (x) => norm(String(x.title).split(/\(|\s[-–—]\s/)[0]).trim() + "|" + norm(String(x.authors).split(/[,;]/)[0]).trim();
-    const melhorEdicao = (a, b) => (brasil(b) - brasil(a)) || (!!b.cover_url - !!a.cover_url)
-      || ((b.ano || 0) - (a.ano || 0)) || (amazon(b) - amazon(a));
-    const porObra = new Map();
-    for (const x of lista) {
-      const k = obra(x), atual = porObra.get(k);
-      if (!atual || melhorEdicao(atual, x) > 0) porObra.set(k, x);
-    }
-    return [...porObra.values()].sort((a, b) => pontos(b) - pontos(a));   // sort estável: empate mantém a ordem acima
+      + (ehPt(x) ? 1 : 0) + brasil(x);
+    // todas as edições (a sua pode ser a padrão, não a de luxo mais nova): relevância → capa na Amazon → mais recente
+    return lista.sort((a, b) => (pontos(b) - pontos(a)) || (amazon(b) - amazon(a)) || ((b.ano || 0) - (a.ano || 0)));
   }
 
   // #3 ISBN: detecção e busca exata por ISBN-10 / ISBN-13
