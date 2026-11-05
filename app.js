@@ -946,7 +946,7 @@
       sel.value = atual || "";
     };
     pop("fa-genero", generos, "Gênero: todos", ui.adv.genero);
-    pop("fa-ano", anos, "Ano de leitura: todos", ui.adv.ano);
+    pop("fa-ano", anos, "Ano: todos", ui.adv.ano);
     pop("fa-autor", autores, "Autor: todos", ui.adv.autor);
     $("fa-formato").value = ui.adv.formato || "";
     // coleções: usa id como value e nome como rótulo
@@ -1530,6 +1530,8 @@
   // ============================================================
   //  FICHA DO ITEM
   // ============================================================
+  // o bloco "Datas, formato e coleção" continua aberto quando a ficha se redesenha (ex.: ao trocar o formato)
+  let fichaMaisAberta = false;
   async function abrirFicha(id) {
     const it = await Store.get(id);
     if (!it) return;
@@ -1631,6 +1633,22 @@
       </div>
 
       <div class="ficha-secao">
+        <h2>Avaliação</h2>
+        <div class="estrelas" id="f-estrelas" role="group" aria-label="Avaliação">
+          ${[1,2,3,4,5].map((n) => `<button type="button" class="estrela ${it.rating >= n ? "on" : ""}" data-n="${n}" aria-label="${n} de 5 estrelas" aria-pressed="${it.rating === n}">${ico("star", 26)}</button>`).join("")}
+        </div>
+      </div>
+
+      <div class="ficha-secao">
+        <h2>Resenha e anotações</h2>
+        <textarea class="input" id="f-review" placeholder="O que achou? (sem spoiler)">${esc(it.review)}</textarea>
+      </div>
+
+      ${notifBloco}
+
+      <details class="ficha-mais"${fichaMaisAberta ? " open" : ""}>
+        <summary>Datas, formato e coleção</summary>
+      <div class="ficha-secao">
         <h2>Datas</h2>
         <div class="datas-linha">
           <label class="campo-inline">Início
@@ -1662,19 +1680,7 @@
         </div>
       </div>
 
-      <div class="ficha-secao">
-        <h2>Avaliação</h2>
-        <div class="estrelas" id="f-estrelas" role="group" aria-label="Avaliação">
-          ${[1,2,3,4,5].map((n) => `<button type="button" class="estrela ${it.rating >= n ? "on" : ""}" data-n="${n}" aria-label="${n} de 5 estrelas" aria-pressed="${it.rating === n}">${ico("star", 26)}</button>`).join("")}
-        </div>
-      </div>
-
-      <div class="ficha-secao">
-        <h2>Resenha e anotações</h2>
-        <textarea class="input" id="f-review" placeholder="O que achou? (sem spoiler)">${esc(it.review)}</textarea>
-      </div>
-
-      ${notifBloco}
+      </details>
 
       ${it.synopsis ? `<div class="ficha-secao"><h2>Sinopse</h2><div class="sinopse">${esc(it.synopsis)}</div></div>` : ""}
 
@@ -1685,6 +1691,7 @@
       </div>`;
 
     $("modal-ficha").hidden = false;
+    corpo.querySelector(".ficha-mais").addEventListener("toggle", (e) => { fichaMaisAberta = e.target.open; });
 
     // --- status ---
     corpo.querySelectorAll("#f-status .status-op").forEach((b) =>

@@ -406,8 +406,9 @@ label.campo { display: block; margin: 12px 0 5px; font-size: 13px; color: var(--
 .ficha-rodape .btn-perigo { margin-left: auto; }
 
 /* ===== Datas na ficha ===== */
-.datas-linha { display: flex; gap: 12px; flex-wrap: wrap; }
-.campo-inline { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--txt-suave); font-weight: 600; flex: 1 1 130px; }
+.datas-linha { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }   /* início e conclusão lado a lado */
+.campo-inline { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--txt-suave); font-weight: 600; min-width: 0; }
+.campo-inline .input-data { width: 100%; min-width: 0; }
 .input-data { color-scheme: dark; }
 :root[data-theme="light"] .input-data { color-scheme: light; }
 
@@ -626,3 +627,21 @@ html { scrollbar-color: var(--linha) var(--bg); }
 
 /* com um diálogo aberto, o aviso sobe pro topo pra não cobrir os botões do rodapé */
 body:has(.modal-bg:not([hidden])) .toast { top: 16px; bottom: auto; }
+
+/* ===== Ficha: o que se usa pouco fica recolhido ===== */
+.ficha-mais { margin-top: 22px; border-top: 1px solid var(--linha); }
+.ficha-mais > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 0 2px; font-size: 15px; font-weight: 600; color: var(--txt); }
+.ficha-mais > summary::-webkit-details-marker { display: none; }
+.ficha-mais > summary::after { content: ""; width: 8px; height: 8px; margin-right: 4px; border-right: 1.5px solid var(--txt-suave);
+  border-bottom: 1.5px solid var(--txt-suave); transform: rotate(45deg) translateY(-2px); transition: transform .2s; }
+.ficha-mais[open] > summary::after { transform: rotate(225deg) translateY(-2px); }
+
+/* ===== Painel de filtros no celular: grade de 2 colunas, caixas da mesma largura ===== */
+@media (max-width: 759px) {
+  .filtros-avancados:not([hidden]) { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .filtros-avancados .select-status { width: 100%; min-width: 0; }
+  .filtros-avancados .view-toggle { width: 100%; }
+  .filtros-avancados .view-toggle .vt { flex: 1 1 0; }
+  #fa-limpar { justify-self: start; align-self: center; }
+}
