@@ -156,11 +156,18 @@ const APIs = (() => {
     // relevância: bate com o que foi digitado + edição em português
     const norm = (t) => String(t || "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
     const palavras = norm(termo).split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 2);
-    const pontos = (x) => (palavras.length && palavras.every((w) => norm(x.title + " " + x.authors).includes(w)) ? 1 : 0)
-      + (ehPt(x) ? 1 : 0);
     const amazon = (x) => (x.cover_url.includes("media-amazon") ? 1 : 0);
-    // relevância → edição mais recente → capa atual da Amazon (sort estável: empate mantém a ordem acima)
-    return lista.sort((a, b) => (pontos(b) - pontos(a)) || ((b.ano || 0) - (a.ano || 0)) || (amazon(b) - amazon(a)));
+    const pontos = (x) => (palavras.length && palavras.every((w) => norm(x.title + " " + x.authors).includes(w)) ? 1 : 0)
+      + (ehPt(x) ? 1 : 0) + amazon(x);
+    // uma linha por obra: entre as edições do mesmo livro fica a de capa atual (Amazon) e, depois, a mais recente com capa
+    const obra = (x) => norm(String(x.title).split(/[:(]|\s[-–—]\s/)[0]).trim() + "|" + norm(String(x.authors).split(/[,;]/)[0]).trim();
+    const melhorEdicao = (a, b) => (amazon(b) - amazon(a)) || ((b.ano || 0) - (a.ano || 0)) || (!!b.cover_url - !!a.cover_url);
+    const porObra = new Map();
+    for (const x of lista) {
+      const k = obra(x), atual = porObra.get(k);
+      if (!atual || melhorEdicao(atual, x) > 0) porObra.set(k, x);
+    }
+    return [...porObra.values()].sort((a, b) => pontos(b) - pontos(a));   // sort estável: empate mantém a ordem acima
   }
 
   // #3 ISBN: detecção e busca exata por ISBN-10 / ISBN-13
