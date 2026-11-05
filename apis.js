@@ -32,11 +32,57 @@ const APIs = (() => {
     finally { clearTimeout(t); }
   }
 
+  // ---------- Capas ----------
+  // ISBN-13 (978…) → ISBN-10, que é o código da Amazon pra livro físico. 979… não tem ISBN-10.
+  function isbn10de(isbn) {
+    const s = String(isbn || "").replace(/[-\s]/g, "").toUpperCase();
+    if (/^\d{9}[\dX]$/.test(s)) return s;
+    if (!/^978\d{10}$/.test(s)) return null;
+    const core = s.slice(3, 12);
+    const soma = [...core].reduce((a, d, i) => a + Number(d) * (10 - i), 0);
+    const dv = (11 - (soma % 11)) % 11;
+    return core + (dv === 10 ? "X" : String(dv));
+  }
+  // capa atual da edição na Amazon (endereço público por ISBN-10; sem a capa, devolve um GIF de 1×1)
+  // shortcut: endereço não-oficial da Amazon; se parar de funcionar, as outras fontes seguem como reserva
+  const capaAmazon = (isbn) => { const i10 = isbn10de(isbn); return i10 ? `https://m.media-amazon.com/images/P/${i10}.01._SCLZZZZZZZ_.jpg` : ""; };
+  console.assert(isbn10de("9788595084742") === "8595084742" && isbn10de("9791032305690") === null && isbn10de("9780306406157") === "0306406152", "isbn10de");
+  const capaOpenLibrary = (isbn) => isbn ? `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg?default=false` : "";
+
+  // testa se a imagem existe de verdade (Amazon responde 1×1 quando não tem; OL dá 404)
+  function imagemValida(url, ms = 3000) {
+    return new Promise((ok) => {
+      if (!url) return ok(false);
+      const img = new Image();
+      const t = setTimeout(() => { img.src = ""; ok(false); }, ms);
+      img.onload = () => { clearTimeout(t); ok(img.naturalWidth > 10 && img.naturalHeight > 10); };
+      img.onerror = () => { clearTimeout(t); ok(false); };
+      img.src = url;
+    });
+  }
+  // primeira capa que carrega, na ordem de preferência (as candidatas carregam em paralelo)
+  async function primeiraCapa(candidatas) {
+    const lista = [...new Set(candidatas.filter(Boolean))];
+    const testes = lista.map((u) => imagemValida(u));
+    for (let i = 0; i < testes.length; i++) if (await testes[i]) return lista[i];   // não espera as piores
+    return "";
+  }
+  // troca a capa de cada resultado pela melhor disponível: Amazon (atual) → a que a fonte trouxe → Open Library
+  async function melhorarCapas(itens) {
+    await Promise.all(itens.map(async (it) => {
+      if (!it.isbn) return;
+      it.cover_url = await primeiraCapa([capaAmazon(it.isbn), it.cover_url, capaOpenLibrary(it.isbn)]) || it.cover_url;
+    }));
+    return itens;
+  }
+
   // ---------- Google Books ----------
+  // chave opcional em config.js (window.GOOGLE_BOOKS_KEY): sem ela, a cota anônima estoura e a busca volta vazia
   // ptOnly=true restringe a edições em português (langRestrict=pt)
   async function googleBooks(termo, ptOnly) {
     let url = "https://www.googleapis.com/books/v1/volumes?maxResults=12&country=BR&q=" + encodeURIComponent(termo);
     if (ptOnly) url += "&langRestrict=pt";
+    if (window.GOOGLE_BOOKS_KEY) url += "&key=" + encodeURIComponent(window.GOOGLE_BOOKS_KEY);
     const r = await fetchT(url);
     if (!r.ok) throw new Error("google " + r.status);
     const j = await r.json();
@@ -44,7 +90,10 @@ const APIs = (() => {
       const info = v.volumeInfo || {};
       let capa = (info.imageLinks && (info.imageLinks.thumbnail || info.imageLinks.smallThumbnail)) || "";
       capa = capa.replace("http://", "https://").replace("&edge=curl", "");
+      const ids = info.industryIdentifiers || [];
+      const isbn = (ids.find((x) => x.type === "ISBN_13") || ids.find((x) => x.type === "ISBN_10") || {}).identifier || "";
       return {
+        isbn,
         title: info.title || "Sem título",
         // só o 1º autor: nas edições BR o Google costuma pôr o tradutor como 2º
         authors: (info.authors || [])[0] || "",
@@ -60,22 +109,28 @@ const APIs = (() => {
   }
 
   // ---------- Open Library (reserva de livros) ----------
-  async function openLibrary(termo) {
-    const url = "https://openlibrary.org/search.json?limit=12&fields=title,author_name,cover_i,number_of_pages_median,first_publish_year,subject&q="
-      + encodeURIComponent(termo);
+  async function openLibrary(termo, lingua = "por") {
+    // "language:por" na consulta faz a OL devolver a edição naquele idioma (título, ISBN e capa da edição)
+    const url = "https://openlibrary.org/search.json?limit=12&fields=key,title,author_name,cover_i,number_of_pages_median,subject,"
+      + "editions,editions.title,editions.isbn,editions.cover_i&q=" + encodeURIComponent(termo + (lingua ? " language:" + lingua : ""));
     const r = await fetchT(url);
     if (!r.ok) throw new Error("openlibrary " + r.status);
     const j = await r.json();
-    return (j.docs || []).map((d) => ({
-      title: d.title || "Sem título",
+    if (lingua && !(j.docs || []).length) return openLibrary(termo, "");   // nada em português → qualquer idioma
+    return (j.docs || []).map((d) => {
+      const ed = ((d.editions || {}).docs || [])[0] || {};
+      const capaId = ed.cover_i || d.cover_i;
+      return {
+      isbn: (ed.isbn || []).find((x) => x.length === 13) || (ed.isbn || [])[0] || "",
+      title: ed.title || d.title || "Sem título",
       authors: (d.author_name || [])[0] || "",   // só o 1º autor
-      cover_url: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : "",
+      cover_url: capaId ? `https://covers.openlibrary.org/b/id/${capaId}-M.jpg` : "",
       synopsis: "",
       genres: (d.subject || []).slice(0, 4),
       total_pages: d.number_of_pages_median || null,
       total_chapters: null, total_volumes: null,
       source: "google_books", external_id: "",
-    }));
+    }; });
   }
 
   // junta duas listas sem duplicar (por external_id ou título+autor)
@@ -86,21 +141,15 @@ const APIs = (() => {
   }
 
   async function buscarLivros(termo) {
-    try {
-      // #6 PT-BR: se houver QUALQUER edição em português, mostra só as PT
-      const pt = await googleBooks(termo, true).catch(() => []);
-      const soPt = pt.filter((x) => !x.language || x.language === "pt");
-      if (soPt.length) return soPt;
-      // nenhuma edição PT → amplia, mas joga eventuais PT pro topo
-      const geral = await googleBooks(termo, false).catch(() => []);
-      if (geral.length) {
-        geral.sort((a, b) => (b.language === "pt") - (a.language === "pt"));
-        return geral;
-      }
-      return await openLibrary(termo);   // reserva
-    } catch {
-      return await openLibrary(termo);   // reserva
-    }
+    // edições em português primeiro, mas sem esconder o resto (o livro certo pode não ter edição PT)
+    const [pt, geral] = await Promise.all([
+      googleBooks(termo, true).catch(() => []),
+      googleBooks(termo, false).catch(() => []),
+    ]);
+    const ehPt = (x) => x.language === "pt";
+    let lista = mesclar(pt.filter(ehPt), mesclar(geral.filter(ehPt), mesclar(pt, geral))).slice(0, 15);
+    if (!lista.length) lista = await openLibrary(termo).catch(() => []);   // reserva
+    return melhorarCapas(lista);
   }
 
   // #3 ISBN: detecção e busca exata por ISBN-10 / ISBN-13
@@ -117,7 +166,7 @@ const APIs = (() => {
       title: d.title || "Sem título",
       authors: (d.authors || [])[0] || "",   // só o 1º (evita tradutor)
       // default=false → se a OL não tiver capa, dá 404 (mostra o ícone) em vez de imagem em branco
-      cover_url: d.cover_url || `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg?default=false`,
+      cover_url: d.cover_url || "",
       synopsis: d.synopsis || "",
       genres: d.subjects || [],
       total_pages: d.page_count || null,
@@ -127,16 +176,18 @@ const APIs = (() => {
   }
 
   async function buscarISBN(isbn) {
-    // 1) Google Books por isbn: — dados ricos (autor, capa, páginas) quando tem
-    try {
-      const g = await googleBooks("isbn:" + isbn, false);
-      if (g.length) return g;
-    } catch {}
-    // 2) BrasilAPI — cobre ISBN brasileiro que o Google não tem (título ao menos)
-    try {
-      const b = await brasilapiISBN(isbn);
-      if (b) return [b];
-    } catch {}
+    // dados: Google (mais completo) ou BrasilAPI (cobre ISBN brasileiro que o Google não tem).
+    // capa: a primeira que existir entre Amazon (atual), Google, BrasilAPI e Open Library.
+    const [g, b] = await Promise.all([
+      googleBooks("isbn:" + isbn, false).catch(() => []),
+      brasilapiISBN(isbn).catch(() => null),
+    ]);
+    const base = g[0] || b;
+    if (base) {
+      base.isbn = isbn;
+      base.cover_url = await primeiraCapa([capaAmazon(isbn), g[0] && g[0].cover_url, b && b.cover_url, capaOpenLibrary(isbn)]);
+      return [base];
+    }
     // 3) reserva: Open Library pelo endpoint de ISBN
     try {
       const r = await fetchT(`https://openlibrary.org/isbn/${isbn}.json`);
@@ -145,7 +196,7 @@ const APIs = (() => {
         return [{
           title: d.title || "Sem título",
           authors: "",
-          cover_url: d.covers && d.covers[0] ? `https://covers.openlibrary.org/b/id/${d.covers[0]}-M.jpg` : "",
+          cover_url: await primeiraCapa([capaAmazon(isbn), d.covers && d.covers[0] ? `https://covers.openlibrary.org/b/id/${d.covers[0]}-L.jpg` : ""]),
           synopsis: typeof d.description === "string" ? d.description : (d.description && d.description.value) || "",
           genres: d.subjects || [],
           total_pages: d.number_of_pages || null,
@@ -311,6 +362,7 @@ const APIs = (() => {
         openLibrary(termo).then((rs) => rs.forEach((r) => push(r.cover_url))).catch(() => {}),
         isbn ? buscarISBN(isbn).then((rs) => rs.forEach((r) => push(r.cover_url))).catch(() => {}) : Promise.resolve(),
       ]);
+      if (isbn) { const amz = capaAmazon(isbn); if (await imagemValida(amz)) push(amz); }
     }
     return [...urls].slice(0, 24);
   }
