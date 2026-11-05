@@ -83,14 +83,12 @@
     });
   }
 
-  // ---------- temas (4 opções: 2 claros, 2 escuros) ----------
+  // ---------- temas (V2: escuro padrão + claro) ----------
   const TEMAS = [
-    { id: "light",  nome: "Creme",  claro: true,  meta: "#f7f2e9", sw: "#f7f2e9", ac: "#c17d2a" },
-    { id: "branco", nome: "Branco", claro: true,  meta: "#ffffff", sw: "#ffffff", ac: "#c17d2a" },
-    { id: "dark",   nome: "Âmbar",  claro: false, meta: "#16130f", sw: "#16130f", ac: "#e0a458" },
-    { id: "chumbo", nome: "Chumbo", claro: false, meta: "#17181a", sw: "#20232a", ac: "#c3c8ce" },
+    { id: "dark",  nome: "Escuro", claro: false, meta: "#121316", sw: "#121316", ac: "#c4384e" },
+    { id: "light", nome: "Claro",  claro: true,  meta: "#f4f5f7", sw: "#f4f5f7", ac: "#b32e44" },
   ];
-  const infoTema = (id) => TEMAS.find((t) => t.id === id) || TEMAS[2];
+  const infoTema = (id) => TEMAS.find((t) => t.id === id) || TEMAS[0];
   const temaAtual = () => {
     const t = document.documentElement.getAttribute("data-theme");
     return TEMAS.some((x) => x.id === t) ? t : "dark";
@@ -292,7 +290,7 @@
         <div class="streak-card">
           <span class="streak-ico">${ico("flame", 26)}</span>
           <div>
-            <div class="streak-num">${streakAtual} ${streakAtual === 1 ? "dia" : "dias"} seguidos</div>
+            <div class="streak-num">${streakAtual} ${streakAtual === 1 ? "dia seguido" : "dias seguidos"}</div>
             <div class="streak-sub">${streakAtual ? "de leitura — continue!" : "Registre um avanço hoje pra começar sua sequência"} ${maiorStreak > 1 ? `· recorde: ${maiorStreak}` : ""}</div>
           </div>
         </div>
@@ -387,6 +385,7 @@
     $("view-stats").hidden = view !== "stats";
     $("view-historico").hidden = view !== "historico";
     $("btn-adicionar").style.display = view === "biblioteca" ? "" : "none";
+    $("brand-sus").hidden = view !== "biblioteca";
     document.querySelectorAll("#bottom-nav .bn-item").forEach((b) =>
       b.classList.toggle("is-active", b.dataset.view === view));
     window.scrollTo(0, 0);
@@ -828,10 +827,18 @@
     // ordenação
     itens.sort(ORDENADORES[ui.ordem] || ORDENADORES.recentes);
 
-    wrap.className = "biblioteca " + ui.view;
+    // status sobre a capa só faz sentido quando o filtro mistura status ("Todos")
+    wrap.className = "biblioteca " + ui.view + (ui.status === "todos" ? " mostra-status" : "");
     $("vazio").hidden = itens.length > 0;
+    // sussurro sob o nome do app: "4 mangás em leitura"
+    { const nomes = { livro: ["livro", "livros"], quadrinho: ["quadrinho", "quadrinhos"], manga: ["mangá", "mangás"] };
+      const suf = { todos: "na estante", lendo: "em leitura", quero_ler: "na fila", lido: "lido", pausado: "pausado", abandonado: "abandonado" }[ui.status] || "";
+      const k = itens.length;
+      $("brand-sus").textContent = `${k} ${nomes[ui.kind][k === 1 ? 0 : 1]} ${k !== 1 && suf.endsWith("o") ? suf + "s" : suf}`; }
 
-    wrap.innerHTML = itens.map((i) => {
+    wrap.innerHTML = itens.map((i, idx) => {
+      // leitura mais recente ganha destaque (grade, filtro "Lendo", sem busca)
+      const destaque = idx === 0 && ui.view === "grid" && ui.status === "lendo" && !ui.filtro && temTotal(i);
       const st = STATUS[i.status];
       const pct = Math.round(progresso(i) * 100);
       const cheias = Math.round(clampNota(i.rating) || 0);
@@ -853,12 +860,12 @@
 
       if (ui.view === "list") {
         return `<div class="card" data-id="${i.id}">
-          <div class="capa-wrap">${capaHTML(i, "capa")}</div>
+          <div class="capa-wrap">${capaHTML(i, "capa")}${temTotal(i) ? `<span class="fita" style="--p:${pct}"><i></i></span>` : ""}</div>
           <div class="card-info">
             <div class="card-titulo">${esc(i.title)}</div>
             <div class="card-autor">${esc(i.authors) || "—"}</div>
             <div class="list-meta">
-              <span class="list-badge" style="background:${st.cor}">${st.label}</span>
+              <span class="list-badge"><i style="background:${st.cor}"></i>${st.label}</span>
               ${listProg}
               ${fmtBadge}
               ${colBadge}
@@ -867,16 +874,16 @@
           </div>
         </div>`;
       }
-      return `<div class="card" data-id="${i.id}">
+      return `<div class="card${destaque ? " destaque" : ""}" data-id="${i.id}">
         <div class="capa-wrap">
           ${capaHTML(i, "capa")}
-          <span class="badge-status" style="background:${st.cor}">${st.label}</span>
-          ${temTotal(i) ? `<div class="progress-mini"><i style="width:${pct}%"></i></div>` : ""}
+          <span class="badge-status"><i style="background:${st.cor}"></i>${st.label}</span>
+          ${temTotal(i) ? `<span class="fita" style="--p:${pct}"><i></i></span>` : ""}
         </div>
         <div class="card-info">
           <div class="card-titulo">${esc(i.title)}</div>
           <div class="card-autor">${esc(i.authors) || "—"}</div>
-          ${progHTML}
+          ${destaque ? `<div class="destaque-n">${pct}%<small>lido</small></div>${progTxt ? `<div class="card-prog">${progTxt}</div>` : ""}` : progHTML}
           <div class="card-baixo">${fmtBadge}${colBadge}${estrelas ? `<span class="card-rating">${estrelas}</span>` : ""}</div>
         </div>
       </div>`;
@@ -1291,8 +1298,8 @@
     const colecoes = await Store.listCollections().catch(() => []);
 
     const statusOps = Object.entries(STATUS).map(([k, v]) =>
-      `<button class="status-op ${it.status === k ? "is-active" : ""}"
-        data-status="${k}" style="${it.status === k ? `background:${v.cor};border-color:${v.cor}` : ""}">${v.label}</button>`
+      `<button class="status-op ico-btn ${it.status === k ? "is-active" : ""}"
+        data-status="${k}"><i class="st-ponto" style="background:${v.cor}"></i>${v.label}</button>`
     ).join("");
 
     // bloco de progresso conforme categoria
@@ -1360,8 +1367,12 @@
       </div>` : "";
 
     corpo.innerHTML = `
+      ${it.cover_url ? `<div class="ficha-fundo" style="--img:url(&quot;${esc(capaURL(it.cover_url))}&quot;)"></div>` : ""}
       <div class="ficha-topo">
-        ${capaHTML(it, "ficha-capa")}
+        <div class="ficha-capa-wrap">
+          ${capaHTML(it, "ficha-capa")}
+          ${temTotal(it) ? `<span class="fita" id="f-fita" style="--p:${pct}"><i></i></span>` : ""}
+        </div>
         <div class="ficha-cab">
           <div class="ficha-titulo">${esc(it.title)}</div>
           <div class="ficha-autor">${esc(it.authors) || "Autor desconhecido"}</div>
@@ -1375,10 +1386,9 @@
       </div>
 
       <div class="ficha-secao">
-        <h4>Progresso</h4>
-        ${progBloco}
+        <div class="prog-pct"><span class="n" id="f-pct">${pct}%</span><span>lido</span></div>
         <div class="prog-barra"><i id="f-barra" style="width:${pct}%"></i></div>
-        <div class="prog-pct" id="f-pct">${pct}% lido</div>
+        ${progBloco}
       </div>
 
       <div class="ficha-secao">
@@ -1396,8 +1406,8 @@
       <div class="ficha-secao">
         <h4>Formato</h4>
         <div class="status-select" id="f-formato">
-          <button class="status-op ico-btn ${it.format === "fisico" ? "is-active" : ""}" data-fmt="fisico" style="${it.format === "fisico" ? "background:var(--acento);border-color:var(--acento);color:#14110c" : ""}">${ico("bookopen", 15)} Físico</button>
-          <button class="status-op ico-btn ${it.format === "digital" ? "is-active" : ""}" data-fmt="digital" style="${it.format === "digital" ? "background:var(--acento);border-color:var(--acento);color:#14110c" : ""}">${ico("phone", 15)} Digital</button>
+          <button class="status-op ico-btn ${it.format === "fisico" ? "is-active" : ""}" data-fmt="fisico">${ico("bookopen", 15)} Físico</button>
+          <button class="status-op ico-btn ${it.format === "digital" ? "is-active" : ""}" data-fmt="digital">${ico("phone", 15)} Digital</button>
           <button class="status-op ${!it.format ? "is-active" : ""}" data-fmt="">— Não definido</button>
         </div>
       </div>
@@ -1438,7 +1448,7 @@
     $("modal-ficha").hidden = false;
 
     // --- status ---
-    corpo.querySelectorAll(".status-op").forEach((b) =>
+    corpo.querySelectorAll("#f-status .status-op").forEach((b) =>
       b.addEventListener("click", async () => {
         const novoStatus = b.dataset.status;
         const patch = { status: novoStatus };
@@ -1481,7 +1491,8 @@
       Object.assign(it, novo);                 // mantém o `it` local em dia
       const p = Math.round(progresso(novo) * 100);
       $("f-barra").style.width = p + "%";
-      $("f-pct").textContent = p + "% lido";
+      $("f-pct").textContent = p + "%";
+      $("f-fita")?.style.setProperty("--p", p);
       if (novo.started_at && $("f-inicio")) $("f-inicio").value = novo.started_at;
       renderBiblioteca();
       if (await checarConclusao(novo)) { abrirFicha(id); renderBiblioteca(); }
@@ -1500,7 +1511,8 @@
       Object.assign(it, novo);
       const p = Math.round(progresso(novo) * 100);
       $("f-barra").style.width = p + "%";
-      $("f-pct").textContent = p + "% lido";
+      $("f-pct").textContent = p + "%";
+      $("f-fita")?.style.setProperty("--p", p);
       if (novo.started_at && $("f-inicio")) $("f-inicio").value = novo.started_at;
       renderBiblioteca();
       if (await checarConclusao(novo)) { abrirFicha(id); renderBiblioteca(); }

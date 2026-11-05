@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://*.supabase.co https://www.googleapis.com https://openlibrary.org https://covers.openlibrary.org https://brasilapi.com.br https://api.jikan.moe https://graphql.anilist.co https://api.mangabaka.org; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
-  <meta name="theme-color" content="#16130f" id="meta-theme">
+  <meta name="theme-color" content="#121316" id="meta-theme">
   <title>Estante</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -13,7 +13,8 @@
   <script>
     (function () {
       var t = localStorage.getItem("tema");
-      if (["light", "branco", "dark", "chumbo"].indexOf(t) < 0) t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+      if (t === "branco") t = "light"; else if (t === "chumbo") t = "dark";   // temas da V1
+      if (["light", "dark"].indexOf(t) < 0) t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
       document.documentElement.setAttribute("data-theme", t);
     })();
   </script>
@@ -54,11 +55,11 @@
     <!-- ===== Cabeçalho ===== -->
     <header class="topbar">
       <div class="brand">
-        <span class="brand-logo" data-ico="book" data-size="22"></span>
         <span class="brand-name">Estante</span>
+        <span class="brand-sus" id="brand-sus"></span>
       </div>
       <div class="topbar-actions">
-        <button class="btn-primary ico-btn" id="btn-adicionar"><span data-ico="plus" data-size="16"></span> Adicionar</button>
+        <button class="btn-add" id="btn-adicionar" aria-label="Adicionar" title="Adicionar" data-ico="plus" data-size="20"></button>
         <button class="icon-btn" id="btn-tema" aria-label="Escolher tema" title="Escolher tema"></button>
         <button class="icon-btn" id="btn-bio" aria-label="Bloqueio biométrico" title="Bloqueio biométrico" data-ico="unlock" hidden></button>
         <button class="icon-btn" id="btn-sair" aria-label="Sair" data-ico="logout" hidden></button>
