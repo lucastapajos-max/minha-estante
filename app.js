@@ -1387,7 +1387,9 @@
     const val = (v) => (v == null ? "" : String(v));
     const progFields = k === "livro"
       ? `<label class="campo">Total de páginas</label>
-         <input class="input" id="m-pages" type="number" inputmode="numeric" placeholder="ex.: 320" value="${ed ? val(ed.total_pages) : ""}">`
+         <input class="input" id="m-pages" type="number" inputmode="numeric" placeholder="ex.: 320" value="${ed ? val(ed.total_pages) : ""}">
+         <label class="campo">ISBN da sua edição (opcional: traz a capa exata)</label>
+         <input class="input" id="m-isbn" inputmode="numeric" placeholder="ex.: 9788595084742" value="${ed ? esc(ed.isbn || "") : ""}">`
       : `<label class="campo">Total de capítulos</label>
          <input class="input" id="m-chaps" type="number" inputmode="numeric" placeholder="ex.: 120" value="${ed ? val(ed.total_chapters) : ""}">
          <label class="campo">Total de volumes</label>
@@ -1471,7 +1473,8 @@
       btnC.disabled = true;
       grid.innerHTML = `<div class="spinner">Buscando capas…</div>`;
       try {
-        const capas = await APIs.buscarCapas(k, `${titulo} ${$("m-authors").value.trim()}`.trim());
+        const isbnInformado = $("m-isbn") ? $("m-isbn").value.trim() : "";
+        const capas = await APIs.buscarCapas(k, `${titulo} ${$("m-authors").value.trim()}`.trim(), isbnInformado);
         if (!capas.length) { grid.innerHTML = `<div class="spinner">Nenhuma capa encontrada. Cole uma URL acima.</div>`; return; }
         grid.innerHTML = capas.map((u) => `<img class="capa-op" src="${esc(u)}" alt="" loading="lazy" data-u="${esc(u)}" onerror="this.remove()">`).join("");
         grid.querySelectorAll(".capa-op").forEach((img) => img.addEventListener("click", () => {
@@ -1505,6 +1508,8 @@
         total_chapters: k !== "livro" ? (parseInt($("m-chaps").value) || null) : null,
         total_volumes: k !== "livro" ? (parseInt($("m-vols").value) || null) : null,
       };
+      const isbnNovo = $("m-isbn") ? $("m-isbn").value.replace(/[-\s]/g, "") : "";
+      if (isbnNovo) dados.isbn = isbnNovo;
       $("modal-manual").hidden = true;
       if (ed) {
         await Store.update(ed.id, dados);

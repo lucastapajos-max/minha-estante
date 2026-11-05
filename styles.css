@@ -617,3 +617,6 @@ html { scrollbar-color: var(--linha) var(--bg); }
 .biblioteca.list .fb-aut { display: none; }
 /* destaque de obra ainda não começada: sem número-herói de 0% */
 .destaque-inicio { margin-top: 18px; font-size: 15px; font-weight: 300; color: var(--txt-suave); }
+
+/* com um diálogo aberto, o aviso sobe pro topo pra não cobrir os botões do rodapé */
+body:has(.modal-bg:not([hidden])) .toast { top: 16px; bottom: auto; }

@@ -132,7 +132,7 @@ const APIs = (() => {
       total_chapters: null, total_volumes: null,
       language: lingua === "por" ? "pt" : "",
       ano: parseInt((String((ed.publish_date || [])[0] || "").match(/\d{4}/) || [])[0]) || null,
-      source: "google_books", external_id: "",
+      source: "openlibrary", external_id: "",
     }; });
   }
 
@@ -184,7 +184,7 @@ const APIs = (() => {
       genres: d.subjects || [],
       total_pages: d.page_count || null,
       total_chapters: null, total_volumes: null,
-      source: "google_books", external_id: isbn,
+      source: "brasilapi", external_id: isbn,
     };
   }
 
@@ -206,15 +206,20 @@ const APIs = (() => {
       const r = await fetchT(`https://openlibrary.org/isbn/${isbn}.json`);
       if (r.ok) {
         const d = await r.json();
+        const refAutor = d.authors && d.authors[0] && d.authors[0].key;
+        const autor = refAutor
+          ? await fetchT(`https://openlibrary.org${refAutor}.json`).then((x) => (x.ok ? x.json() : {})).then((a) => a.name || "").catch(() => "")
+          : "";
         return [{
+          isbn,
           title: d.title || "Sem título",
-          authors: "",
+          authors: autor,
           cover_url: await primeiraCapa([capaAmazon(isbn), d.covers && d.covers[0] ? `https://covers.openlibrary.org/b/id/${d.covers[0]}-L.jpg` : ""]),
           synopsis: typeof d.description === "string" ? d.description : (d.description && d.description.value) || "",
           genres: d.subjects || [],
           total_pages: d.number_of_pages || null,
           total_chapters: null, total_volumes: null,
-          source: "google_books", external_id: "",
+          source: "openlibrary", external_id: isbn,
         }];
       }
     } catch {}
@@ -359,7 +364,7 @@ const APIs = (() => {
   }
 
   // #5 opções de capa de TODAS as fontes usadas (dedup, sem vazias)
-  async function buscarCapas(kind, termo) {
+  async function buscarCapas(kind, termo, isbnConhecido) {
     const urls = new Set();
     const push = (u) => { if (u && typeof u === "string") urls.add(u); };
     if (kind === "manga") {
@@ -369,13 +374,12 @@ const APIs = (() => {
         anilistManga(termo).then((rs) => rs.forEach((r) => push(r.cover_url))).catch(() => {}),
       ]);
     } else {
-      const isbn = extrairISBN(termo);
-      await Promise.all([
-        googleBooks(termo, false).then((rs) => rs.forEach((r) => push(r.cover_url))).catch(() => {}),
-        openLibrary(termo).then((rs) => rs.forEach((r) => push(r.cover_url))).catch(() => {}),
-        isbn ? buscarISBN(isbn).then((rs) => rs.forEach((r) => push(r.cover_url))).catch(() => {}) : Promise.resolve(),
+      const isbn = extrairISBN(isbnConhecido || "") || extrairISBN(termo);
+      const [doIsbn, lista] = await Promise.all([
+        isbn ? buscarISBN(isbn).catch(() => []) : [],
+        extrairISBN(termo) ? [] : buscarLivros(termo).catch(() => []),
       ]);
-      if (isbn) { const amz = capaAmazon(isbn); if (await imagemValida(amz)) push(amz); }
+      [...doIsbn, ...lista].forEach((r) => push(r.cover_url));
     }
     return [...urls].slice(0, 24);
   }
