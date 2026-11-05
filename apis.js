@@ -67,11 +67,18 @@ const APIs = (() => {
     for (let i = 0; i < testes.length; i++) if (await testes[i]) return lista[i];   // não espera as piores
     return "";
   }
-  // troca a capa de cada resultado pela melhor disponível: Amazon (atual) → a que a fonte trouxe → Open Library
+  // troca a capa de cada resultado pela melhor disponível, sempre da mesma edição (mesmo ISBN):
+  // Google (vira 600px na exibição) → Amazon (~330px) → a que a fonte trouxe → Open Library.
+  // "naAmazon" continua valendo como sinal de edição à venda no Brasil, mesmo quando a capa usada é a do Google.
+  const ehGoogle = (u) => !!u && u.includes("books.google.");
   async function melhorarCapas(itens) {
     await Promise.all(itens.map(async (it) => {
       if (!it.isbn) return;
-      it.cover_url = await primeiraCapa([capaAmazon(it.isbn), it.cover_url, capaOpenLibrary(it.isbn)]) || it.cover_url;
+      const amz = capaAmazon(it.isbn);
+      const ordem = ehGoogle(it.cover_url) ? [it.cover_url, amz, capaOpenLibrary(it.isbn)] : [amz, it.cover_url, capaOpenLibrary(it.isbn)];
+      const [naAmazon, capa] = await Promise.all([imagemValida(amz), primeiraCapa(ordem)]);
+      it.naAmazon = naAmazon;
+      it.cover_url = capa || it.cover_url;
     }));
     return itens;
   }
@@ -156,7 +163,7 @@ const APIs = (() => {
     // relevância: bate com o que foi digitado + edição em português
     const norm = (t) => String(t || "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
     const palavras = norm(termo).split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 2);
-    const amazon = (x) => (x.cover_url.includes("media-amazon") ? 1 : 0);
+    const amazon = (x) => (x.naAmazon || x.cover_url.includes("media-amazon") ? 1 : 0);
     // prefixo do ISBN diz o país da editora: 978-85 / 978-65 = Brasil (978-972 / 978-989 = Portugal)
     const brasil = (x) => (/^978(85|65)/.test(x.isbn || "") ? 1 : 0);
     const pontos = (x) => (palavras.length && palavras.every((w) => norm(x.title + " " + x.authors).includes(w)) ? 1 : 0)
@@ -198,7 +205,7 @@ const APIs = (() => {
     const base = g[0] || b;
     if (base) {
       base.isbn = isbn;
-      base.cover_url = await primeiraCapa([capaAmazon(isbn), g[0] && g[0].cover_url, b && b.cover_url, capaOpenLibrary(isbn)]);
+      base.cover_url = await primeiraCapa([g[0] && g[0].cover_url, capaAmazon(isbn), b && b.cover_url, capaOpenLibrary(isbn)]);   // Google primeiro: maior resolução
       return [base];
     }
     // 3) reserva: Open Library pelo endpoint de ISBN
