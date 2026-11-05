@@ -171,7 +171,7 @@
 
   function toast(msg) {
     const t = $("toast");
-    t.textContent = msg; t.hidden = false;
+    t.hidden = false; t.textContent = msg;
     clearTimeout(toast._t);
     toast._t = setTimeout(() => (t.hidden = true), 2200);
   }
@@ -278,7 +278,7 @@
 
     $("stats-corpo").innerHTML = `
       <div class="stats-secao">
-        <h4>Meta de ${ano}</h4>
+        <h2>Meta de ${ano}</h2>
         <div class="meta-linha">
           <input class="input" id="stats-meta" aria-label="Meta de livros no ano" type="number" inputmode="numeric" value="${meta || ""}" placeholder="ex.: 20">
           <span class="prog-sep">livros/ano</span>
@@ -287,7 +287,7 @@
         ${meta ? `
           <div class="prog-barra" style="margin-top:14px"><i style="width:${pctMeta}%"></i></div>
           <div class="meta-txt"><b>${lidosAno.length}</b> de <b>${meta}</b> livros — ${pctMeta}%
-            ${lidosAno.length >= meta ? " 🎉 meta batida!" : ` (faltam ${meta - lidosAno.length})`}</div>
+            ${lidosAno.length >= meta ? ". Meta batida." : ` (faltam ${meta - lidosAno.length})`}</div>
         ` : `<div class="meta-txt">Defina uma meta pra acompanhar seu progresso do ano.</div>`}
       </div>
 
@@ -302,7 +302,7 @@
       </div>
 
       <div class="stats-secao">
-        <h4>Resumo</h4>
+        <h2>Resumo</h2>
         <div class="stats-nums">
           <div class="stat-num"><b>${lidos.length}</b><span>lidos no total</span></div>
           <div class="stat-num"><b>${lidosAno.length}</b><span>em ${ano}</span></div>
@@ -316,7 +316,7 @@
       </div>
 
       <div class="stats-secao">
-        <h4>Volume lido</h4>
+        <h2>Volume lido</h2>
         <div class="periodo-toggle" id="periodo-toggle">
           <button data-p="semana" class="${statsPeriodo === "semana" ? "is-active" : ""}">Semana</button>
           <button data-p="mes" class="${statsPeriodo === "mes" ? "is-active" : ""}">Mês</button>
@@ -330,10 +330,10 @@
       </div>
 
       <div class="stats-secao">
-        <h4>${ico("trophy", 15)} Sua retrospectiva de ${ano}</h4>
+        <h2>${ico("trophy", 15)} Sua retrospectiva de ${ano}</h2>
         ${lidosAno.length ? `<div class="retro-card">
           <div class="retro-linha"><b>${lidosAno.length}</b> livro(s) e <b>${pagesAno.toLocaleString("pt-BR")}</b> páginas lidas</div>
-          ${favorito ? `<div class="retro-linha">Favorito: <b>${esc(favorito.title)}</b> (${Math.round(clampNota(favorito.rating))}★)</div>` : ""}
+          ${favorito ? `<div class="retro-linha">Favorito: <b>${esc(favorito.title)}</b> (nota ${Math.round(clampNota(favorito.rating))})</div>` : ""}
           ${genTopAno ? `<div class="retro-linha">Gênero do ano: <b>${esc(genTopAno[0])}</b></div>` : ""}
           ${autTopAno && autTopAno[1] > 1 ? `<div class="retro-linha">Autor mais lido: <b>${esc(autTopAno[0])}</b> (${autTopAno[1]} livros)</div>` : ""}
           ${mesTop ? `<div class="retro-linha">Mês mais forte: <b>${mesTop}</b></div>` : ""}
@@ -342,7 +342,7 @@
       </div>
 
       <div class="stats-secao">
-        <h4>Seu ritmo</h4>
+        <h2>Seu ritmo</h2>
         <div class="stats-nums">
           <div class="stat-num"><b>${mediaPagDiaGeral}</b><span>páginas/dia lido</span></div>
           <div class="stat-num"><b>${tempoMedio != null ? tempoMedio : "—"}</b><span>dias p/ terminar (média)</span></div>
@@ -351,7 +351,7 @@
       </div>
 
       <div class="stats-secao">
-        <h4>Lidos por mês em ${ano}</h4>
+        <h2>Lidos por mês em ${ano}</h2>
         <div class="grafico-mes">
           ${porMes.map((n, idx) => `
             <div class="gm-col ${idx === mesAtual ? "gm-atual" : ""}">
@@ -362,7 +362,7 @@
       </div>
 
       <div class="stats-secao">
-        <h4>Gêneros mais lidos</h4>
+        <h2>Gêneros mais lidos</h2>
         ${topGen.length ? `<div class="grafico-gen">
           ${topGen.map(([g, n]) => `
             <div class="gg-linha">
@@ -376,7 +376,7 @@
     $("stats-salvar-meta").onclick = async () => {
       const alvo = parseInt($("stats-meta").value) || 0;
       await Store.setGoal(ano, alvo);
-      toast("Meta salva ✓");
+      toast("Meta salva");
       renderStats();
     };
     $("periodo-toggle").querySelectorAll("button").forEach((b) =>
@@ -398,6 +398,9 @@
   // ============================================================
   //  RETROSPECTIVA DO ANO (telas cheias + imagem pra compartilhar)
   // ============================================================
+  // nota de 0 a 5 em estrelas desenhadas (cheias + vazadas), com leitura por extenso
+  const notaHTML = (n, px) => `<span class="nota" role="img" aria-label="${n} de 5 estrelas">${
+    [1, 2, 3, 4, 5].map((k) => `<span class="${k <= n ? "on" : ""}">${ico("star", px)}</span>`).join("")}</span>`;
   const plural = (n, um, varios) => `${n.toLocaleString("pt-BR")} ${n === 1 ? um : varios}`;
 
   function telasRetro(d) {
@@ -413,7 +416,7 @@
       t.push(`${f.cover_url ? `<div class="rt-fundo" style="--img:url(&quot;${esc(capaURL(f.cover_url))}&quot;)"></div>
           <img class="rt-capa" src="${esc(capaURL(f.cover_url))}" alt="">` : ""}
         <p class="rt-sus">Seu favorito</p><p class="rt-titulo">${esc(f.title)}</p>
-        <p class="rt-sus">${esc(f.authors || "")}</p><p class="rt-estrelas" aria-label="${n} de 5 estrelas">${"★".repeat(n)}${"☆".repeat(5 - n)}</p>`);
+        <p class="rt-sus">${esc(f.authors || "")}</p><p class="rt-estrelas">${notaHTML(n, 22)}</p>`);
     }
     if (d.genero) t.push(`<p class="rt-sus">O gênero do ano</p><p class="rt-grito rt-palavra">${esc(d.genero)}</p>`);
     if (d.mes) t.push(`<p class="rt-sus">Seu mês mais forte</p><p class="rt-grito rt-palavra">${d.mes}</p>
@@ -515,6 +518,7 @@
     $("brand-sus").hidden = view !== "biblioteca";
     document.querySelectorAll("#bottom-nav .bn-item").forEach((b) =>
       b.classList.toggle("is-active", b.dataset.view === view));
+    ariaAtivo();
     window.scrollTo(0, 0);
     salvarNav();
     if (view === "stats") await renderStats();
@@ -607,7 +611,7 @@
       const data = $("se-data").value ? new Date($("se-data").value).toISOString() : s.date;
       await Store.updateSession(s.id, { amount, date: data });
       $("modal-sessao").hidden = true;
-      toast("Registro atualizado ✓");
+      toast("Registro atualizado");
       renderHistorico();
     };
   }
@@ -658,7 +662,7 @@
     if (temTotal(novo) && progresso(novo) >= 1 && novo.status !== "lido") {
       if (await perguntarConclusao(novo)) {
         await Store.update(novo.id, { status: "lido", finished_at: hojeISO() });
-        toast("Leitura concluída! 🎉");
+        toast("Leitura concluída");
         return true;
       }
     }
@@ -708,7 +712,7 @@
         : await salvarProgresso(it, novoCur, it.total_chapters, it.current_volume || 0, it.total_volumes);
       $("modal-rapido").hidden = true;
       renderBiblioteca();
-      toast("Progresso salvo ✓");
+      toast("Progresso salvo");
       await checarConclusao(novo);
       renderBiblioteca();
     };
@@ -797,7 +801,7 @@
       localStorage.setItem("bioCredId", bufToB64(cred.rawId));
       localStorage.setItem("bioOn", "1");
       atualizarBotaoBio();
-      toast("Bloqueio biométrico ativado ✓");
+      toast("Bloqueio biométrico ativado");
     } catch {
       toast("Não deu pra ativar a biometria agora.");
     }
@@ -920,7 +924,16 @@
   // ============================================================
   //  RENDER DA BIBLIOTECA
   // ============================================================
+  // estado "selecionado" também pra leitor de tela (abas, grade/lista, menu inferior)
+  function ariaAtivo() {
+    document.querySelectorAll("#tabs .tab, #view-toggle .vt").forEach((b) =>
+      b.setAttribute("aria-pressed", String(b.classList.contains("is-active"))));
+    document.querySelectorAll("#bottom-nav .bn-item").forEach((b) =>
+      b.classList.contains("is-active") ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
+  }
+
   async function renderBiblioteca() {
+    ariaAtivo();
     const wrap = $("biblioteca");
     let itens = await Store.list(ui.kind);
 
@@ -993,7 +1006,7 @@
       const st = STATUS[i.status];
       const pct = Math.round(progresso(i) * 100);
       const cheias = Math.round(clampNota(i.rating) || 0);
-      const estrelas = cheias ? "★".repeat(cheias) + "☆".repeat(5 - cheias) : "";
+      const estrelas = cheias ? notaHTML(cheias, 12) : "";
       const ehDigital = ehLivroDigital(i);   // livro por posição (Kindle) / % legado
       const progTxt = ehDigital ? "" : progressoTexto(i);
       const pctTxt = temTotal(i) ? `<span class="prog-pctinline">${pct}%</span>` : "";
@@ -1157,7 +1170,7 @@
             $("modal-add").hidden = true;
             // mostra o item recém-criado na visão certa (evita "sumir" na aba Lendo)
             ui.status = status; marcarStatus(); salvarNav();
-            toast(item.total_chapters ? `Adicionado ✓ (${item.total_chapters} caps lançados)` : "Adicionado à estante ✓");
+            toast(item.total_chapters ? `Adicionado à estante: ${plural(item.total_chapters, "capítulo lançado", "capítulos lançados")}` : "Adicionado à estante");
             renderBiblioteca();
           } catch (err) {
             console.warn("Falha ao adicionar:", err);
@@ -1244,7 +1257,7 @@
         await new Promise((r) => setTimeout(r, 250));   // gentil com as APIs
       }
       st.textContent = `Pronto! ${add} adicionado(s), ${pulados} já existia(m)${erros ? `, ${erros} com erro` : ""}.`;
-      toast(`Importados: ${add} livro(s) ✓`);
+      toast(`Importado: ${plural(add, "livro", "livros")}`);
     } catch (e) {
       st.textContent = "Erro ao importar. Verifique a conexão e tente de novo.";
     } finally {
@@ -1279,7 +1292,7 @@
       };
       baixarArquivo(`estante-backup-${hojeISO()}.json`, JSON.stringify(dados, null, 2));
       $("restore-status").textContent = `Backup gerado: ${items.length} livro(s).`;
-      toast("Backup exportado ✓");
+      toast("Backup exportado");
     } catch (e) {
       $("restore-status").textContent = "Não deu pra exportar agora.";
     }
@@ -1316,7 +1329,7 @@
       // 3) metas
       for (const g of (dados.goals || [])) { if (g && g.year && g.target) { try { await Store.setGoal(g.year, g.target); } catch {} } }
       st.textContent = `Restaurado: ${add} livro(s), ${pulados} já existia(m). (histórico de sessões não é restaurado)`;
-      toast(`Restaurado: ${add} livro(s) ✓`);
+      toast(`Restaurado: ${plural(add, "título", "títulos")}`);
       renderBiblioteca();
     } catch (e) {
       st.textContent = "Erro ao restaurar. Verifique a conexão e tente de novo.";
@@ -1455,12 +1468,12 @@
       $("modal-manual").hidden = true;
       if (ed) {
         await Store.update(ed.id, dados);
-        toast("Alterações salvas ✓");
+        toast("Alterações salvas");
         renderBiblioteca();
         abrirFicha(ed.id);
       } else {
         await Store.add({ kind: k, source: "manual", ...dados });
-        toast("Adicionado à estante ✓");
+        toast("Adicionado à estante");
         renderBiblioteca();
       }
     };
@@ -1536,7 +1549,7 @@
     // bloco de notificação: só faz sentido em mangá + modo nuvem (depende do robô)
     const notifBloco = (it.kind === "manga" && Store.cloud) ? `
       <div class="ficha-secao">
-        <h4>Notificações</h4>
+        <h2>Notificações</h2>
         <button class="${it.notify ? "btn-primary" : "btn-ghost"}" id="f-notify">
           ${ico("bell", 15)} ${it.notify ? "Avisos ligados — desligar" : "Avisar quando sair capítulo novo"}
         </button>
@@ -1560,7 +1573,7 @@
       </div>
 
       <div class="ficha-secao">
-        <h4>Status</h4>
+        <h2>Status</h2>
         <div class="status-select" id="f-status">${statusOps}</div>
       </div>
 
@@ -1571,7 +1584,7 @@
       </div>
 
       <div class="ficha-secao">
-        <h4>Datas</h4>
+        <h2>Datas</h2>
         <div class="datas-linha">
           <label class="campo-inline">Início
             <input class="input input-data" id="f-inicio" type="date" value="${it.started_at || ""}">
@@ -1583,7 +1596,7 @@
       </div>
 
       <div class="ficha-secao">
-        <h4>Formato</h4>
+        <h2>Formato</h2>
         <div class="status-select" id="f-formato">
           <button class="status-op ico-btn ${it.format === "fisico" ? "is-active" : ""}" data-fmt="fisico">${ico("bookopen", 15)} Físico</button>
           <button class="status-op ico-btn ${it.format === "digital" ? "is-active" : ""}" data-fmt="digital">${ico("phone", 15)} Digital</button>
@@ -1592,7 +1605,7 @@
       </div>
 
       <div class="ficha-secao">
-        <h4>Coleção / Saga</h4>
+        <h2>Coleção / Saga</h2>
         <div class="colecao-linha">
           <select class="input" id="f-colecao">
             <option value="">— Nenhuma</option>
@@ -1603,20 +1616,20 @@
       </div>
 
       <div class="ficha-secao">
-        <h4>Avaliação</h4>
+        <h2>Avaliação</h2>
         <div class="estrelas" id="f-estrelas" role="group" aria-label="Avaliação">
           ${[1,2,3,4,5].map((n) => `<button type="button" class="estrela ${it.rating >= n ? "on" : ""}" data-n="${n}" aria-label="${n} de 5 estrelas" aria-pressed="${it.rating === n}">${ico("star", 26)}</button>`).join("")}
         </div>
       </div>
 
       <div class="ficha-secao">
-        <h4>Resenha e anotações</h4>
+        <h2>Resenha e anotações</h2>
         <textarea class="input" id="f-review" placeholder="O que achou? (sem spoiler)">${esc(it.review)}</textarea>
       </div>
 
       ${notifBloco}
 
-      ${it.synopsis ? `<div class="ficha-secao"><h4>Sinopse</h4><div class="sinopse">${esc(it.synopsis)}</div></div>` : ""}
+      ${it.synopsis ? `<div class="ficha-secao"><h2>Sinopse</h2><div class="sinopse">${esc(it.synopsis)}</div></div>` : ""}
 
       <div class="ficha-rodape">
         <button class="btn-ghost ico-btn" id="f-editar">${ico("pencil", 15)} Editar</button>
@@ -1763,7 +1776,7 @@
       });
       it.notify = true;
       abrirFicha(id);
-      toast("🔔 Avisos ligados!");
+      toast("Avisos ligados");
     });
 
     // --- estrelas ---
@@ -1996,6 +2009,15 @@
       if (tit && !tit.id) tit.id = bg.id + "-titulo";
       m.setAttribute("role", "dialog"); m.setAttribute("aria-modal", "true"); m.tabIndex = -1;
       if (tit) m.setAttribute("aria-labelledby", tit.id);
+      m.addEventListener("keydown", (e) => {
+        if (e.key !== "Tab") return;
+        const f = [...m.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+          .filter((x) => !x.disabled && x.offsetParent !== null);
+        if (!f.length) return;
+        const ini = f[0], fim = f[f.length - 1], at = document.activeElement;
+        if (e.shiftKey && (at === ini || at === m)) { e.preventDefault(); fim.focus(); }
+        else if (!e.shiftKey && at === fim) { e.preventDefault(); ini.focus(); }
+      });
       let origem = null, origemId = null;
       new MutationObserver(() => {
         if (!bg.hidden) {

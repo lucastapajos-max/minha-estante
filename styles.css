@@ -373,7 +373,7 @@ label.campo { display: block; margin: 12px 0 5px; font-size: 13px; color: var(--
 .tag-genero { font-size: 11px; color: var(--txt-suave); background: var(--bg-card-2); border-radius: var(--pill); padding: 3px 9px; }
 
 .ficha-secao { margin-top: 18px; }
-.ficha-secao > h4 { margin: 0 0 8px; font-size: 15px; font-weight: 600; color: var(--txt); }
+.ficha-secao > h2 { margin: 0 0 8px; font-size: 15px; font-weight: 600; color: var(--txt); }
 
 .status-select { display: flex; gap: 6px; flex-wrap: wrap; }
 .status-op {
@@ -424,7 +424,7 @@ label.campo { display: block; margin: 12px 0 5px; font-size: 13px; color: var(--
 /* ===== Estatísticas (Marco 3) ===== */
 .modal-stats { max-width: 620px; }
 .stats-secao { margin-top: 20px; }
-.stats-secao > h4 { margin: 0 0 10px; font-size: 15px; font-weight: 600; color: var(--txt); }
+.stats-secao > h2 { margin: 0 0 10px; font-size: 15px; font-weight: 600; color: var(--txt); }
 .meta-linha { display: flex; align-items: center; gap: 10px; }
 .meta-linha .input { width: 100px; text-align: center; }
 .meta-txt { font-size: 13.5px; color: var(--txt-suave); margin-top: 8px; }
@@ -594,3 +594,8 @@ html { scrollbar-color: var(--linha) var(--bg); }
 :root[data-theme="light"] .obra-status.finished  { color: #6b3fc4; }
 :root[data-theme="light"] .obra-status.hiatus    { color: #8a5b00; }
 :root[data-theme="light"] .obra-status.cancelled { color: #b8352c; }
+
+/* nota em estrelas desenhadas (card e retrospectiva) */
+.nota { display: inline-flex; gap: 2px; vertical-align: -2px; }
+.nota svg { fill: none; }
+.nota .on svg { fill: currentColor; }
