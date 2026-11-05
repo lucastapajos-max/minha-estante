@@ -31,6 +31,8 @@ const Store = (() => {
       current_page: item.current_page ?? 0,
       pos_atual: item.pos_atual ?? null,          // livro por "posição" do Kindle
       pos_total: item.pos_total ?? null,          // total de posições; nulo = por página
+      // posição na fila "Próxima leitura"; só vai quando existe (novo item = fim da fila)
+      ...(item.fila_ordem != null && { fila_ordem: item.fila_ordem }),
       total_chapters: item.total_chapters ?? null,
       current_chapter: item.current_chapter ?? 0,
       total_volumes: item.total_volumes ?? null,

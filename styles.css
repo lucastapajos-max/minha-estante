@@ -498,3 +498,13 @@ label.campo { display: block; margin: 12px 0 5px; font-size: 13px; color: var(--
 .select-status option { background: var(--bg-card); color: var(--txt); }
 .status-op.is-active { background: var(--txt); border-color: var(--txt); color: var(--bg); }
 .st-ponto { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
+
+/* ===== Fila "Próxima leitura" ===== */
+.proxima-rot { font-size: 13px; font-weight: 600; color: var(--acento); margin-bottom: 8px; }
+.btn-comecar { margin-top: 18px; }
+.fila-ctl { display: inline-flex; gap: 4px; margin-left: auto; flex: 0 0 auto; }
+.fila-ctl button { width: 32px; height: 32px; border-radius: var(--raio-sm); border: 1px solid var(--linha); background: transparent;
+  color: var(--txt-suave); font-size: 15px; line-height: 1; display: grid; place-items: center; }
+.fila-ctl button:hover:not(:disabled) { color: var(--txt); border-color: var(--txt-fraco); }
+.fila-ctl button:disabled { opacity: .3; cursor: default; }
+.card-baixo:has(.fila-ctl) { width: 100%; }

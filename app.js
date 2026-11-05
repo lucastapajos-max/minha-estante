@@ -826,6 +826,11 @@
 
     // ordenação
     itens.sort(ORDENADORES[ui.ordem] || ORDENADORES.recentes);
+    // fila "Próxima leitura": no Quero ler, quem já tem lugar na fila vem antes, na ordem da fila
+    // (sort estável: o resto mantém a ordenação escolhida)
+    const naFila = ui.status === "quero_ler";
+    if (naFila) itens.sort((a, b) => (a.fila_ordem ?? 1e9) - (b.fila_ordem ?? 1e9));
+    const podeOrdenar = naFila && !ui.filtro && !Object.values(ui.adv).some(Boolean) && itens.length > 1;
 
     // status sobre a capa só faz sentido quando o filtro mistura status ("Todos")
     wrap.className = "biblioteca " + ui.view + (ui.status === "todos" ? " mostra-status" : "");
@@ -838,7 +843,12 @@
 
     wrap.innerHTML = itens.map((i, idx) => {
       // leitura mais recente ganha destaque (grade, filtro "Lendo", sem busca)
-      const destaque = idx === 0 && ui.view === "grid" && ui.status === "lendo" && !ui.filtro && temTotal(i);
+      const proxima = idx === 0 && ui.view === "grid" && naFila && !ui.filtro;
+      const destaque = proxima || (idx === 0 && ui.view === "grid" && ui.status === "lendo" && !ui.filtro && temTotal(i));
+      const filaCtl = podeOrdenar ? `<span class="fila-ctl">
+          <button type="button" data-mover="-1" aria-label="Subir na fila" title="Subir na fila"${idx === 0 ? " disabled" : ""}>↑</button>
+          <button type="button" data-mover="1" aria-label="Descer na fila" title="Descer na fila"${idx === itens.length - 1 ? " disabled" : ""}>↓</button>
+        </span>` : "";
       const st = STATUS[i.status];
       const pct = Math.round(progresso(i) * 100);
       const cheias = Math.round(clampNota(i.rating) || 0);
@@ -872,6 +882,7 @@
               ${estrelas ? `<span class="card-rating">${estrelas}</span>` : ""}
             </div>
           </div>
+          ${filaCtl}
         </div>`;
       }
       return `<div class="card${destaque ? " destaque" : ""}" data-id="${i.id}">
@@ -881,10 +892,12 @@
           ${temTotal(i) ? `<span class="fita" style="--p:${pct}"><i></i></span>` : ""}
         </div>
         <div class="card-info">
+          ${proxima ? `<div class="proxima-rot">Próxima leitura</div>` : ""}
           <div class="card-titulo">${esc(i.title)}</div>
           <div class="card-autor">${esc(i.authors) || "—"}</div>
-          ${destaque ? `<div class="destaque-n">${pct}%<small>lido</small></div>${progTxt ? `<div class="card-prog">${progTxt}</div>` : ""}` : progHTML}
-          <div class="card-baixo">${fmtBadge}${colBadge}${estrelas ? `<span class="card-rating">${estrelas}</span>` : ""}</div>
+          ${proxima ? `<button type="button" class="btn-primary btn-comecar" data-comecar>Começar a ler</button>`
+            : destaque ? `<div class="destaque-n">${pct}%<small>lido</small></div>${progTxt ? `<div class="card-prog">${progTxt}</div>` : ""}` : progHTML}
+          <div class="card-baixo">${fmtBadge}${colBadge}${estrelas ? `<span class="card-rating">${estrelas}</span>` : ""}${filaCtl}</div>
         </div>
       </div>`;
     }).join("");
@@ -909,6 +922,31 @@
       c.addEventListener("touchend", cancelaLP);
       c.addEventListener("touchcancel", cancelaLP);
     });
+
+    // fila: ↑/↓ e "Começar a ler" (não abrem a ficha)
+    wrap.querySelectorAll("[data-mover]").forEach((b) => b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      moverNaFila(itens, b.closest(".card").dataset.id, Number(b.dataset.mover));
+    }));
+    wrap.querySelectorAll("[data-comecar]").forEach((b) => b.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const it = itens.find((x) => x.id === b.closest(".card").dataset.id);
+      await Store.update(it.id, { status: "lendo", started_at: it.started_at || hojeISO(), fila_ordem: null });
+      toast(`Boa leitura: ${it.title}`);
+      renderBiblioteca();
+    }));
+  }
+
+  // troca o item de lugar com o vizinho e grava só quem mudou de posição
+  // (na primeira vez a fila inteira ganha número; depois são 2 escritas)
+  async function moverNaFila(lista, id, dir) {
+    const ordem = lista.map((i) => i.id);
+    const de = ordem.indexOf(id), para = de + dir;
+    if (de < 0 || para < 0 || para >= ordem.length) return;
+    [ordem[de], ordem[para]] = [ordem[para], ordem[de]];
+    const muda = lista.filter((i) => i.fila_ordem !== ordem.indexOf(i.id));
+    await Promise.all(muda.map((i) => Store.update(i.id, { fila_ordem: ordem.indexOf(i.id) })));
+    renderBiblioteca();
   }
 
   // ============================================================
