@@ -531,7 +531,7 @@
   // ============================================================
   function descricaoSessao(s) {
     if (s.unit === "paginas") {
-      return `Leu ${s.amount} página${s.amount === 1 ? "" : "s"}` + (s.to_pos ? ` · até a pág. ${s.to_pos}` : "");
+      return `Leu ${s.amount} página${s.amount === 1 ? "" : "s"}` + (s.to_pos ? `, até a pág. ${s.to_pos}` : "");
     }
     if (s.to_pos) {
       const de = s.to_pos - s.amount + 1;
@@ -560,7 +560,7 @@
     sessoes.forEach((s) => {
       const it = s.item || {};
       const rot = rotuloDia(s.date);
-      if (rot !== diaAtual) { diaAtual = rot; html += `<div class="hist-dia">${rot}</div>`; }
+      if (rot !== diaAtual) { diaAtual = rot; html += `<h3 class="hist-dia">${rot}</h3>`; }
       html += `<div class="hist-entry" data-id="${s.id}">
         <div class="hist-capa">${capaHTML({ cover_url: it.cover_url, kind: it.kind || "livro" }, "hist-capa-img")}</div>
         <div class="hist-corpo">

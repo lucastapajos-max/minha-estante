@@ -476,11 +476,14 @@ label.campo { display: block; margin: 12px 0 5px; font-size: 13px; color: var(--
 .periodo-toggle button.is-active { background: var(--txt); color: var(--bg); }
 
 /* título de aba (estatísticas/histórico) */
-.view-titulo { font-size: 22px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; margin: 18px 0 10px; }
 
 /* ===== Histórico de leitura (#3) ===== */
 .hist-vazio { text-align: center; color: var(--txt-fraco); padding: 50px 20px; font-size: 14px; line-height: 1.6; }
-.hist-dia { font-size: 13px; font-weight: 600; color: var(--txt-suave); margin: 22px 0 8px; }
+/* a data é o título do grupo: mesma voz do masthead e da ficha (Bricolage pesada), em tamanho de seção */
+.hist-dia { margin: 40px 0 6px; font-size: 26px; font-weight: 800; line-height: 1; letter-spacing: -.03em; color: var(--txt); }
+.hist-dia:first-child { margin-top: 32px; }
+/* título só pra leitor de tela */
+.so-leitor { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .hist-entry { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--linha); padding: 10px 0; }
 .hist-capa { flex: 0 0 auto; }
 .hist-capa-img { width: 38px; height: 56px; object-fit: cover; border-radius: 5px; background: var(--bg-card-2); display: block; }
