@@ -114,7 +114,7 @@ const APIs = (() => {
     // "language:por" na consulta faz a OL devolver a edição naquele idioma (título, ISBN e capa da edição)
     const url = "https://openlibrary.org/search.json?limit=12&fields=key,title,author_name,cover_i,number_of_pages_median,subject,"
       + "editions,editions.title,editions.isbn,editions.cover_i,editions.publish_date&q=" + encodeURIComponent(termo + (lingua ? " language:" + lingua : ""));
-    const r = await fetchT(url);
+    const r = await fetchT(url, {}, 6000);   // a OL às vezes trava; não segura a busca toda por ela
     if (!r.ok) throw new Error("openlibrary " + r.status);
     const j = await r.json();
     if (lingua && !(j.docs || []).length) return openLibrary(termo, "");   // nada em português → qualquer idioma
