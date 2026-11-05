@@ -15,4 +15,5 @@ window.VAPID_PUBLIC_KEY = "BMkTMk0u4nKsU4ATbrm3oVheBbyJMptf2XS0Eh7oqPFf0WjsyvOQn
    Crie em console.cloud.google.com → APIs → Books API → Credenciais → Chave de API,
    e RESTRINJA por site (HTTP referrer): https://minha-estante.lucastapajos.workers.dev/*
    Restrita assim, ela pode ficar pública aqui como a anonKey. */
-window.GOOGLE_BOOKS_KEY = "";
+window.GOOGLE_BOOKS_KEY = "AIzaSyDhQ_FuDscI2WnwGtwfgoP-WLnmGJoAmB4";
+
