@@ -62,7 +62,7 @@ def caps_de(serie):
 
 
 def mangabaka_ultimo(mangabaka_id, titulo):
-    """Último capítulo lançado (inteiro) ou None. Retorna (id, ultimo)."""
+    """Último capítulo lançado e situação da obra. Retorna (id, ultimo, status)."""
     try:
         mid = mangabaka_id
         serie = None
@@ -75,13 +75,13 @@ def mangabaka_ultimo(mangabaka_id, titulo):
                              params={"limit": 1, "q": titulo}, timeout=30)
             data = s.json().get("data", [])
             if not data:
-                return mid, None
+                return mid, None, None
             serie = data[0]
             mid = str(serie.get("id") or mid or "")
-        return mid, caps_de(serie)
+        return mid, caps_de(serie), serie.get("status")
     except Exception as e:
         print(f"  ! erro MangaBaka ({titulo}): {e}")
-        return mangabaka_id, None
+        return mangabaka_id, None, None
 
 
 def enviar_push(sub, payload):
@@ -108,13 +108,16 @@ def enviar_push(sub, payload):
 
 def main():
     itens = sb_get("items?notify=eq.true&kind=eq.manga"
-                   "&select=id,user_id,title,mangabaka_id,last_notified_chapter,total_chapters")
+                   "&select=id,user_id,title,mangabaka_id,last_notified_chapter,total_chapters,release_status")
     print(f"{len(itens)} mangá(s) vigiado(s).")
     for it in itens:
         titulo = it["title"]
         ultimo_avisado = it.get("last_notified_chapter") or 0
-        mid, ultimo = mangabaka_ultimo(it.get("mangabaka_id"), titulo)
+        mid, ultimo, situacao = mangabaka_ultimo(it.get("mangabaka_id"), titulo)
         time.sleep(0.4)  # gentileza com a API da MangaBaka
+        # situação de lançamento (ex.: releasing → completed) pro app mostrar e decidir a conclusão
+        if situacao and situacao != it.get("release_status"):
+            sb_patch(f"items?id=eq.{it['id']}", {"release_status": situacao})
         if ultimo is None:
             print(f"- {titulo}: sem dado de capítulo, pulando.")
             continue

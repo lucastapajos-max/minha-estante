@@ -24,7 +24,8 @@ create table if not exists items (
   current_page    int default 0,
   pos_atual       int,                              -- livro por "posição" do Kindle/e-book (posição atual)
   pos_total       int,                              -- total de posições da edição Kindle; nulo = por página
-  fila_ordem      int,                              -- posição na fila "Próxima leitura" (Quero ler); nulo = fim
+  fila_ordem      int,
+  release_status  text,                             -- situação na MangaBaka (releasing/completed/hiatus…)                              -- posição na fila "Próxima leitura" (Quero ler); nulo = fim
   total_chapters  int,
   current_chapter int default 0,
   total_volumes   int,

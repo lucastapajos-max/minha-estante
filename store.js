@@ -44,6 +44,7 @@ const Store = (() => {
       external_id: item.external_id || "",
       notify: item.notify ?? false,
       mangabaka_id: item.mangabaka_id || "",
+      ...(item.release_status && { release_status: item.release_status }),   // situação na MangaBaka (migration_v9)
       last_notified_chapter: item.last_notified_chapter ?? null,
       started_at: item.started_at ?? null,
       finished_at: item.finished_at ?? null,

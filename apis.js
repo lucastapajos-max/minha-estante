@@ -281,16 +281,17 @@ const APIs = (() => {
       }
       if (!serie) return null;
       const n = Math.floor(parseFloat(serie.total_chapters));
-      return { id: String(serie.id), ultimo: Number.isFinite(n) && n > 0 ? n : null };
+      return { id: String(serie.id), ultimo: Number.isFinite(n) && n > 0 ? n : null, status: serie.status || "" };
     } catch { return null; }
   }
 
   // #capítulos: número do último capítulo lançado via MangaBaka.
-  // Retorna { ultimo, mangabaka_id }.
+  // Retorna { ultimo, mangabaka_id, release_status }.
   async function capitulosLancados(titulo, mangabakaId) {
     const mb = await mangabakaInfo(titulo, mangabakaId);
-    if (mb && mb.ultimo) return { ultimo: mb.ultimo, mangabaka_id: mb.id };
-    return { ultimo: null, mangabaka_id: (mb && mb.id) || mangabakaId || "" };
+    const release_status = (mb && mb.status) || "";
+    if (mb && mb.ultimo) return { ultimo: mb.ultimo, mangabaka_id: mb.id, release_status };
+    return { ultimo: null, mangabaka_id: (mb && mb.id) || mangabakaId || "", release_status };
   }
 
   // #5 opções de capa de TODAS as fontes usadas (dedup, sem vazias)

@@ -155,7 +155,7 @@
     const s = String(raw || "").toLowerCase();
     if (!s) return null;
     if (/(releasing|publishing|ongoing|current)/.test(s)) return { label: "Em lançamento", cls: "releasing" };
-    if (/(completed|finished)/.test(s))                    return { label: "Finalizado", cls: "finished" };
+    if (/(completed|finished)/.test(s))                    return { label: "Concluído", cls: "finished" };
     if (/hiatus/.test(s))                                  return { label: "Em hiato", cls: "hiatus" };
     if (/(cancel|discontin)/.test(s))                      return { label: "Cancelado", cls: "cancelled" };
     if (/(not[_ ]?yet|upcoming|não lançad)/.test(s))       return { label: "Não lançado", cls: "upcoming" };
@@ -655,6 +655,16 @@
   // #2 se chegou ao total, pergunta e conclui. Retorna true se concluiu.
   async function checarConclusao(novo) {
     if (temTotal(novo) && progresso(novo) >= 1 && novo.status !== "lido") {
+      // mangá sem situação salva: consulta a MangaBaka na hora
+      if (novo.kind === "manga" && !novo.release_status) {
+        const info = await APIs.capitulosLancados(novo.title, novo.mangabaka_id);
+        if (info.release_status) {
+          novo.release_status = info.release_status;
+          Store.update(novo.id, { release_status: info.release_status }).catch(() => {});
+        }
+      }
+      // ainda saindo capítulo: você só está em dia, a obra não acabou
+      if (aindaSaindo(novo)) { toast("Em dia com os lançamentos"); return false; }
       if (await perguntarConclusao(novo)) {
         await Store.update(novo.id, { status: "lido", finished_at: hojeISO() });
         toast("Leitura concluída");
@@ -719,7 +729,10 @@
   function perguntarConclusao(item) {
     return new Promise((resolve) => {
       const bg = $("modal-conclusao");
-      $("conclusao-txt").textContent = `"${item.title}" chegou ao fim. Marcar como concluída?`;
+      $("toast").hidden = true;   // o aviso "Progresso salvo" cobriria os botões
+      $("conclusao-txt").textContent = `Você chegou ao fim de "${item.title}".`;
+      // a capa com a fita descendo até o pé: o marcador chegou à última página
+      $("conclusao-capa").innerHTML = capaHTML(item, "capa") + `<span class="fita" style="--p:100"><i></i></span>`;
       bg.hidden = false;
       const fim = (v) => {
         bg.hidden = true;
@@ -874,6 +887,32 @@
   }
 
   // tem um total definido? (só aí a % faz sentido)
+  // mangá que ainda recebe capítulos: 100% = "em dia", não "terminou"
+  const aindaSaindo = (i) => i.kind === "manga" && ["releasing", "hiatus"].includes((statusObra(i.release_status) || {}).cls);
+  // linha entre o autor e o progresso: situação de lançamento do mangá
+  const lancHTML = (i) => {
+    const so = i.kind === "manga" && statusObra(i.release_status);
+    return so ? `<div class="card-lanc ${so.cls}"><i></i>${so.label}</div>` : "";
+  };
+
+  // preenche a situação de lançamento dos mangás que ainda não têm (1x por sessão)
+  const lancConsultados = new Set();
+  async function completarLancamento(itens) {
+    const faltam = itens.filter((i) => i.kind === "manga" && !i.release_status && !lancConsultados.has(i.id)).slice(0, 8);
+    if (!faltam.length) return;
+    let mudou = false;
+    for (const i of faltam) {
+      lancConsultados.add(i.id);
+      const info = await APIs.capitulosLancados(i.title, i.mangabaka_id);
+      if (!info.release_status) continue;
+      try {
+        await Store.update(i.id, { release_status: info.release_status, ...(info.mangabaka_id && { mangabaka_id: info.mangabaka_id }) });
+        mudou = true;
+      } catch { /* coluna ainda não existe (migration_v9 não rodada): tenta na próxima sessão */ }
+    }
+    if (mudou && ui.kind === "manga") renderBiblioteca();
+  }
+
   function temTotal(item) {
     return item.kind === "livro" ? (!!item.pos_total || !!item.total_pages)
       : !!(item.total_chapters || item.total_volumes);
@@ -932,6 +971,7 @@
     ariaAtivo();
     const wrap = $("biblioteca");
     let itens = await Store.list(ui.kind);
+    if (ui.kind === "manga") completarLancamento(itens);   // em segundo plano
 
     // alimenta o banco de gêneros conhecidos (pras sugestões do editor)
     itens.forEach((i) => (i.genres || []).forEach((g) => g && generosConhecidos.add(g)));
@@ -1024,6 +1064,7 @@
           <div class="card-info">
             <button type="button" class="card-abrir"><span class="card-titulo">${esc(i.title)}</span></button>
             <div class="card-autor">${esc(i.authors) || "—"}</div>
+            ${lancHTML(i)}
             <div class="list-meta">
               <span class="list-badge"><i style="background:${st.cor}"></i>${st.label}</span>
               ${listProg}
@@ -1045,6 +1086,7 @@
           ${proxima ? `<div class="proxima-rot">Próxima leitura</div>` : ""}
           <button type="button" class="card-abrir"><span class="card-titulo">${esc(i.title)}</span></button>
           <div class="card-autor">${esc(i.authors) || "—"}</div>
+          ${lancHTML(i)}
           ${proxima ? `<button type="button" class="btn-primary btn-comecar" data-comecar>Começar a ler</button>`
             : destaque ? (pct ? `<div class="destaque-n">${pct}%<small>lido</small></div>${progTxt ? `<div class="card-prog">${progTxt}</div>` : ""}`
               : `<div class="destaque-inicio">Ainda não começou</div>`) : progHTML}
@@ -1162,6 +1204,7 @@
               const info = await APIs.capitulosLancados(item.title, item.mangabaka_id);
               if (info.ultimo) item.total_chapters = info.ultimo;
               if (info.mangabaka_id) item.mangabaka_id = info.mangabaka_id;
+              if (info.release_status && !item.release_status) item.release_status = info.release_status;
             }
             await Store.add(item);
             $("modal-add").hidden = true;
@@ -1741,8 +1784,9 @@
         $("f-tot").value = info.ultimo;
         await salvarProg();
         // guarda o id da MangaBaka pra próximas consultas / robô
-        await Store.update(id, { mangabaka_id: info.mangabaka_id });
+        await Store.update(id, { mangabaka_id: info.mangabaka_id, ...(info.release_status && { release_status: info.release_status }) });
         it.mangabaka_id = info.mangabaka_id;
+        if (info.release_status) it.release_status = info.release_status;
         toast(`Último lançado: capítulo ${info.ultimo}`);
       } else {
         toast("Não encontrei — preencha manualmente");
