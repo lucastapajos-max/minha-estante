@@ -853,8 +853,16 @@
 
   // capas da Open Library por ISBN devolvem imagem em BRANCO quando não existem;
   // ?default=false faz virar 404 → aí o onerror mostra o ícone de reserva.
+  // endereço da capa na hora de MOSTRAR (vale também pras capas já salvas)
   function capaURL(u) {
-    if (u && u.includes("covers.openlibrary.org/b/isbn/") && !u.includes("default=false")) {
+    if (!u) return u;
+    // Google manda miniatura de 128px (zoom=1); "fife" pede a mesma capa com 600px de largura
+    if (u.includes("books.google.") && u.includes("/books/content") && !u.includes("fife=")) {
+      return u.replace("http://", "https://").replace("&edge=curl", "") + "&fife=w600";
+    }
+    // Open Library: tamanho M (~180px) → L
+    if (u.includes("covers.openlibrary.org/") && /-M\.jpg/.test(u)) u = u.replace(/-M\.jpg/, "-L.jpg");
+    if (u.includes("covers.openlibrary.org/b/isbn/") && !u.includes("default=false")) {
       return u + (u.includes("?") ? "&" : "?") + "default=false";
     }
     return u;
@@ -1479,7 +1487,7 @@
         const isbnInformado = $("m-isbn") ? $("m-isbn").value.trim() : "";
         const capas = await APIs.buscarCapas(k, `${titulo} ${$("m-authors").value.trim()}`.trim(), isbnInformado);
         if (!capas.length) { grid.innerHTML = `<div class="spinner">Nenhuma capa encontrada. Cole uma URL acima.</div>`; return; }
-        grid.innerHTML = capas.map((u) => `<img class="capa-op" src="${esc(u)}" alt="" loading="lazy" data-u="${esc(u)}" onerror="this.remove()">`).join("");
+        grid.innerHTML = capas.map((u) => `<img class="capa-op" src="${esc(capaURL(u))}" alt="" loading="lazy" data-u="${esc(u)}" onerror="this.remove()">`).join("");
         grid.querySelectorAll(".capa-op").forEach((img) => img.addEventListener("click", () => {
           inpCover.value = img.dataset.u;
           prevCover.src = capaURL(img.dataset.u); prevCover.hidden = false;
