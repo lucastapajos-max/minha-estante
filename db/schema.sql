@@ -24,23 +24,21 @@ create table if not exists items (
   current_page    int default 0,
   pos_atual       int,                              -- livro por "posição" do Kindle/e-book (posição atual)
   pos_total       int,                              -- total de posições da edição Kindle; nulo = por página
-  fila_ordem      int,
-  release_status  text,
-  isbn            text,                             -- ISBN da edição escolhida (capa exata)                             -- situação na MangaBaka (releasing/completed/hiatus…)                              -- posição na fila "Próxima leitura" (Quero ler); nulo = fim
+  fila_ordem      int,                              -- posição na fila "Próxima leitura" (Quero ler); nulo = fim
+  release_status  text,                             -- situação na MangaBaka (releasing/completed/hiatus…)
+  isbn            text,                             -- ISBN da edição escolhida (capa exata)
   total_chapters  int,
   current_chapter int default 0,
   total_volumes   int,
   current_volume  int default 0,
   rating         numeric(2,1),                     -- 0–5 (meia estrela permitida)
   review         text default '',
-  notes          text default '',
   genres         text[] default '{}',
   source         text default 'manual'
                    check (source in ('google_books','openlibrary','brasilapi','jikan','anilist','mangabaka','manual')),
   external_id    text default '',
   -- notificação de novos capítulos (mangás em andamento)
   notify         boolean not null default false,   -- sino ligado?
-  mangadex_id    text default '',                  -- legado (MangaDex desativada; mantido p/ não quebrar dados antigos)
   mangabaka_id   text default '',                  -- id na MangaBaka (fonte primária de capítulos)
   last_notified_chapter int,                       -- último capítulo já avisado
   -- datas de leitura + formato + coleção (features de UX)
@@ -75,20 +73,8 @@ create table if not exists reading_sessions (
 );
 
 -- 3) TAGS — etiquetas do usuário --------------------------------
-create table if not exists tags (
-  id       uuid primary key default gen_random_uuid(),
-  user_id  uuid not null references auth.users on delete cascade,
-  name     text not null,
-  unique (user_id, name)
-);
 
 -- 4) ITEM_TAGS — relação N:N item <-> tag -----------------------
-create table if not exists item_tags (
-  item_id  uuid not null references items on delete cascade,
-  tag_id   uuid not null references tags on delete cascade,
-  user_id  uuid not null references auth.users on delete cascade,
-  primary key (item_id, tag_id)
-);
 
 -- 5) GOALS — meta anual de leitura (1 linha por ano) ------------
 create table if not exists goals (
@@ -117,7 +103,7 @@ create table if not exists push_subscriptions (
 do $$
 declare t text;
 begin
-  foreach t in array array['items','reading_sessions','tags','item_tags','goals','push_subscriptions','collections'] loop
+  foreach t in array array['items','reading_sessions','goals','push_subscriptions','collections'] loop
     execute format('alter table %I enable row level security;', t);
     execute format('drop policy if exists p_sel on %I;', t);
     execute format('drop policy if exists p_ins on %I;', t);

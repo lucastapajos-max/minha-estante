@@ -44,8 +44,8 @@ const Store = (() => {
       external_id: item.external_id || "",
       notify: item.notify ?? false,
       mangabaka_id: item.mangabaka_id || "",
-      ...(item.release_status && { release_status: item.release_status }),
-      ...(item.isbn && { isbn: item.isbn }),                // ISBN da edição (migration_v10)   // situação na MangaBaka (migration_v9)
+      ...(item.release_status && { release_status: item.release_status }),   // situação na MangaBaka
+      ...(item.isbn && { isbn: item.isbn }),                // ISBN da edição
       last_notified_chapter: item.last_notified_chapter ?? null,
       started_at: item.started_at ?? null,
       finished_at: item.finished_at ?? null,
@@ -89,6 +89,8 @@ const Store = (() => {
     .filter((g) => typeof g !== "string" || (g.trim() && _chaveGenero(g) !== "general"))
     .map((g) => (typeof g === "string" ? GENEROS_PT[_chaveGenero(g)] || _capGenero(g) : g)))];
 
+  console.assert(_generosPT(["Comedy", "comedy", "Fiction, Fantasy, General", "Ficção-Científica", "Shounen"]).join() === "Comédia,Ficção,Fantasia,Ficção científica,Shounen", "generosPT");
+
   function normaliza(row) {
     if (!row) return row;
     if (row.rating != null) row.rating = Number(row.rating);
@@ -115,14 +117,13 @@ const Store = (() => {
     const _salvar = () => localStorage.setItem(CHAVE, JSON.stringify(cache));
 
     return {
-      mode: "local",
       async session() { return { user: { id: "local" } }; },  // sempre "logado"
       async list(kind) {
         let it = _ler().items.slice();
         if (kind) it = it.filter((i) => i.kind === kind);
-        return it.sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
+        return it.sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || "")).map(normaliza);
       },
-      async get(id) { return _ler().items.find((i) => i.id === id) || null; },
+      async get(id) { return normaliza(_ler().items.find((i) => i.id === id)) || null; },
       async add(item) {
         const db = _ler();
         const novo = { id: _uid(), ...novoItem(item), created_at: _agora(), updated_at: _agora() };
@@ -142,11 +143,8 @@ const Store = (() => {
       },
       async addSession(itemId, s) {
         const db = _ler();
-        const reg = { id: _uid(), item_id: itemId, date: _agora(), amount: s.amount || 0, unit: s.unit || "paginas", to_pos: s.to_pos ?? null, note: s.note || "" };
+        const reg = { id: _uid(), item_id: itemId, date: s.date || _agora(), amount: s.amount || 0, unit: s.unit || "paginas", to_pos: s.to_pos ?? null, note: s.note || "" };
         db.sessions.push(reg); _salvar(); return reg;
-      },
-      async sessionsOf(itemId) {
-        return _ler().sessions.filter((s) => s.item_id === itemId).sort((a, b) => b.date.localeCompare(a.date));
       },
       async listAllSessions(limit = 200) {
         const db = _ler();
@@ -198,8 +196,6 @@ const Store = (() => {
     }
 
     return {
-      mode: "cloud",
-      _sb: sb,
       async session() {
         const { data } = await sb.auth.getSession();
         SESSION = data.session;
@@ -243,22 +239,25 @@ const Store = (() => {
         return true;
       },
       async addSession(itemId, s) {
-        const row = { item_id: itemId, amount: s.amount || 0, unit: s.unit || "paginas", to_pos: s.to_pos ?? null, note: s.note || "", user_id: await uid() };
+        const row = { item_id: itemId, amount: s.amount || 0, unit: s.unit || "paginas", to_pos: s.to_pos ?? null, note: s.note || "", user_id: await uid(),
+          ...(s.date && { date: s.date }) };
         const { data, error } = await sb.from("reading_sessions").insert(row).select().single();
         if (error) throw error;
         return data;
       },
-      async sessionsOf(itemId) {
-        const { data, error } = await sb.from("reading_sessions").select("*").eq("item_id", itemId).order("date", { ascending: false });
-        if (error) throw error;
-        return data || [];
-      },
       async listAllSessions(limit = 200) {
-        const { data, error } = await sb.from("reading_sessions")
-          .select("*, item:items(title, cover_url, kind)")
-          .order("date", { ascending: false }).limit(limit);
-        if (error) throw error;
-        return data || [];
+        const todas = [];
+        while (todas.length < limit) {   // o Supabase devolve no máximo 1000 linhas por consulta
+          const tam = Math.min(1000, limit - todas.length);
+          const { data, error } = await sb.from("reading_sessions")
+            .select("*, item:items(title, cover_url, kind)")
+            .order("date", { ascending: false }).order("id")
+            .range(todas.length, todas.length + tam - 1);
+          if (error) throw error;
+          todas.push(...(data || []));
+          if (!data || data.length < tam) break;
+        }
+        return todas;
       },
       async removeSession(id) {
         const { error } = await sb.from("reading_sessions").delete().eq("id", id);
@@ -324,7 +323,6 @@ const Store = (() => {
   const backend = temNuvem ? Cloud : Local;
 
   return {
-    mode: backend.mode,
     cloud: temNuvem,
     // auth (só faz algo na nuvem; no local é no-op amigável)
     session: () => backend.session(),
@@ -338,7 +336,6 @@ const Store = (() => {
     update: (id, p) => backend.update(id, p),
     remove: (id) => backend.remove(id),
     addSession: (id, s) => backend.addSession(id, s),
-    sessionsOf: (id) => backend.sessionsOf(id),
     listAllSessions: (n) => backend.listAllSessions(n),
     removeSession: (id) => backend.removeSession(id),
     updateSession: (id, p) => backend.updateSession(id, p),
@@ -351,6 +348,5 @@ const Store = (() => {
     listGoals: () => backend.listGoals(),
     // push
     salvarInscricaoPush: (sub) => backend.salvarInscricaoPush && backend.salvarInscricaoPush(sub),
-    _sb: backend._sb || null,
   };
 })();

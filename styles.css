@@ -207,10 +207,6 @@ input { font-family: inherit; }
 /* imagem posicionada: a moldura fica sempre 2:3, mesmo sem overflow:hidden (que a fita precisa) */
 .capa-wrap img, .capa-wrap .capa.fb { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 4px; }
 .capa.fb { display: grid !important; place-items: center; color: var(--txt-fraco); }
-.capa-fallback {
-  width: 100%; height: 100%; display: grid; place-items: center;
-  font-size: 34px; color: var(--txt-fraco);
-}
 /* status: rótulo discreto com ponto de cor (a cor do status nunca vira bloco) */
 .badge-status {
   position: absolute; bottom: 6px; left: 6px; display: inline-flex; align-items: center; gap: 5px;

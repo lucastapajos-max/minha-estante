@@ -65,7 +65,6 @@
     phone: '<rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>',
     layers: '<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>',
     plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
-    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
     check: '<polyline points="20 6 9 17 4 12"/>',
     star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
     arrowup: '<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>',
@@ -191,12 +190,12 @@
 
   async function renderStats() {
     const todos = await Store.list();                 // todos os tipos
-    const sessoes = await Store.listAllSessions(1000).catch(() => []);
+    const sessoes = await Store.listAllSessions(100000).catch(() => []);
     const hoje = new Date();
     const ano = hoje.getFullYear();
     const mesAtual = hoje.getMonth();                  // 0..11
-    // classifica pelo fim da leitura (com fallback pra updated_at)
-    const quando = (i) => (i.finished_at || i.updated_at || "");
+    // só conta no ano/mês quem tem data de conclusão: updated_at muda a cada edição
+    const quando = (i) => i.finished_at || "";
     const lidos = todos.filter((i) => i.status === "lido");
     const lidosAno = lidos.filter((i) => quando(i).slice(0, 4) === String(ano));
     const lidosMes = lidosAno.filter((i) => Number(quando(i).slice(5, 7)) === mesAtual + 1);
@@ -278,13 +277,13 @@
       <div class="stats-secao">
         <h2>Meta de ${ano}</h2>
         <div class="meta-linha">
-          <input class="input" id="stats-meta" aria-label="Meta de livros no ano" type="number" inputmode="numeric" value="${meta || ""}" placeholder="ex.: 20">
-          <span class="prog-sep">livros/ano</span>
+          <input class="input" id="stats-meta" aria-label="Meta de obras no ano" type="number" inputmode="numeric" value="${meta || ""}" placeholder="ex.: 20">
+          <span class="prog-sep">obras/ano</span>
           <button class="btn-primary" id="stats-salvar-meta">Salvar</button>
         </div>
         ${meta ? `
           <div class="prog-barra" style="margin-top:14px"><i style="width:${pctMeta}%"></i></div>
-          <div class="meta-txt"><b>${lidosAno.length}</b> de <b>${meta}</b> livros, ${pctMeta}%
+          <div class="meta-txt"><b>${lidosAno.length}</b> de <b>${meta}</b> obras, ${pctMeta}%
             ${lidosAno.length >= meta ? ". Meta batida." : ` (faltam ${meta - lidosAno.length})`}</div>
         ` : `<div class="meta-txt">Defina uma meta pra acompanhar seu progresso do ano.</div>`}
       </div>
@@ -709,6 +708,10 @@
     $("r-menos").onclick = () => { inp.value = Math.max(0, ler() - passo); };
     $("r-cancel").onclick = () => ($("modal-rapido").hidden = true);
     const salvar = async () => {
+      const bt = $("r-salvar");
+      if (bt.disabled) return;   // toque duplo registraria a sessão duas vezes
+      bt.disabled = true;
+      try {
       const novoCur = ler();
       const novo = ehDigital
         ? await salvarPosicao(it, novoCur, it.pos_total)
@@ -720,6 +723,7 @@
       toast("Progresso salvo");
       await checarConclusao(novo);
       renderBiblioteca();
+      } finally { bt.disabled = false; }
     };
     $("r-salvar").onclick = salvar;
     inp.addEventListener("keydown", (e) => { if (e.key === "Enter") salvar(); });
@@ -766,16 +770,23 @@
     }
     const perm = await Notification.requestPermission();
     if (perm !== "granted") { toast("Permissão de notificação negada"); return false; }
-    const reg = await navigator.serviceWorker.ready;
-    let sub = await reg.pushManager.getSubscription();
-    if (!sub) {
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(window.VAPID_PUBLIC_KEY),
-      });
-    }
-    await Store.salvarInscricaoPush(sub);
+    await salvarInscricaoDoAparelho();
     return true;
+  }
+  async function salvarInscricaoDoAparelho() {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(window.VAPID_PUBLIC_KEY),
+    });
+    await Store.salvarInscricaoPush(sub);
+  }
+  // a inscrição muda sozinha (o navegador renova, o app é reinstalado): regrava a cada abertura
+  async function sincronizarPush() {
+    if (!Store.cloud || !window.VAPID_PUBLIC_KEY || !("PushManager" in window) || Notification.permission !== "granted") return;
+    try {
+      if ((await Store.list("manga")).some((i) => i.notify)) await salvarInscricaoDoAparelho();
+    } catch (e) { console.warn("Não deu pra renovar a inscrição de push:", e); }
   }
 
   // ===== BIOMETRIA (#8 — WebAuthn: Windows Hello / digital Android) =====
@@ -851,8 +862,6 @@
     btn.title = ligado ? "Bloqueio biométrico ativo (clique p/ desativar)" : "Ativar bloqueio biométrico";
   }
 
-  // capas da Open Library por ISBN devolvem imagem em BRANCO quando não existem;
-  // ?default=false faz virar 404 → aí o onerror mostra o ícone de reserva.
   // endereço da capa na hora de MOSTRAR (vale também pras capas já salvas)
   function capaURL(u) {
     if (!u) return u;
@@ -864,11 +873,17 @@
     if (/amazon\.com\/images\/I\//.test(u)) return u.replace(/\._[^/]*_(?=\.(jpe?g|png|webp)$)/i, "");
     // Open Library: tamanho M (~180px) → L
     if (u.includes("covers.openlibrary.org/") && /-M\.jpg/.test(u)) u = u.replace(/-M\.jpg/, "-L.jpg");
+    // capa por ISBN sem default=false devolve imagem em BRANCO quando não existe; com ele vira 404 e cai no onerror
     if (u.includes("covers.openlibrary.org/b/isbn/") && !u.includes("default=false")) {
       return u + (u.includes("?") ? "&" : "?") + "default=false";
     }
     return u;
   }
+  console.assert(
+    capaURL("http://books.google.com/books/content?id=x&zoom=1&edge=curl") === "https://books.google.com/books/content?id=x&zoom=1&fife=w600"
+    && capaURL("https://m.media-amazon.com/images/I/81a._AC_UF1000,1000_QL80_.jpg") === "https://m.media-amazon.com/images/I/81a.jpg"
+    && capaURL("https://m.media-amazon.com/images/P/8595084742.01._SCLZZZZZZZ_.jpg") === "https://m.media-amazon.com/images/P/8595084742.01._SCLZZZZZZZ_.jpg"
+    && capaURL("https://covers.openlibrary.org/b/id/1-M.jpg") === "https://covers.openlibrary.org/b/id/1-L.jpg", "capaURL");
 
   // sem capa (ou capa quebrada): capa tipográfica com título e autor; sem título, o ícone do tipo
   function capaHTML(item, cls) {
@@ -1197,7 +1212,7 @@
           <div class="res-corpo">
             <div class="res-titulo">${esc(r.title)}</div>
             <div class="res-sub">${esc(r.authors) || "Autor desconhecido"}</div>
-            ${meta || r.ano ? `<div class="res-meta">${[meta, r.ano && "edição de " + r.ano].filter(Boolean).join(", ")}</div>` : ""}
+            ${meta || r.ano ? `<div class="res-meta">${esc([meta, r.ano && "edição de " + r.ano].filter(Boolean).join(", "))}</div>` : ""}
             ${badge}
           </div>
           <button class="btn-primary res-add">Adicionar</button>`;
@@ -1278,7 +1293,7 @@
     const st = $("import-status");
     let add = 0, pulados = 0, erros = 0;
     try {
-      const existentes = new Set((await Store.list()).map((i) => (i.title || "").toLowerCase().trim()));
+      const existentes = new Set((await Store.list("livro")).map((i) => (i.title || "").toLowerCase().trim()));
       for (let n = 0; n < linhas.length; n++) {
         const p = linhas[n].split("|").map((x) => x.trim());
         const [isbn, titulo, autor, pgs, nota, inicio, fim] = p;
@@ -1291,6 +1306,7 @@
           await Store.add({
             kind: "livro", status: "lido",
             title: titulo,
+            isbn: (isbn || "").replace(/[^0-9Xx]/g, ""),
             authors: autor || (info && info.authors) || "",
             cover_url: (info && info.cover_url) || "",
             genres: (info && info.genres) || [],
@@ -1344,7 +1360,7 @@
         items, collections, sessions: sess, goals,
       };
       baixarArquivo(`estante-backup-${hojeISO()}.json`, JSON.stringify(dados, null, 2));
-      $("restore-status").textContent = `Backup gerado: ${items.length} livro(s).`;
+      $("restore-status").textContent = `Backup gerado: ${plural(items.length, "título", "títulos")} e ${plural(sess.length, "sessão", "sessões")}.`;
       toast("Backup exportado");
     } catch (e) {
       $("restore-status").textContent = "Não deu pra exportar agora.";
@@ -1367,21 +1383,31 @@
         if (!novoId && c.name) { const nova = await Store.addCollection(c.name, c.kind); novoId = nova.id; porNome.set(c.name.toLowerCase(), novoId); }
         if (c.id && novoId) mapaCol.set(c.id, novoId);
       }
-      // 2) livros: pula os que já existem (por título), remapeia a coleção
-      const existentes = new Set((await Store.list()).map((i) => (i.title || "").toLowerCase().trim()));
+      // 2) obras: pula as que já existem (mesmo tipo + título), remapeia a coleção
+      const chaveDe = (i) => `${i.kind}|${(i.title || "").toLowerCase().trim()}`;
+      const existentes = new Set((await Store.list()).map(chaveDe));
+      const idsNovos = new Map();   // id no backup → id criado agora
       let add = 0, pulados = 0;
       for (const it of dados.items) {
-        const chave = (it.title || "").toLowerCase().trim();
-        if (!chave || existentes.has(chave)) { pulados++; continue; }
+        const chave = chaveDe(it);
+        if (!it.title || existentes.has(chave)) { pulados++; continue; }
         const { id, user_id, created_at, updated_at, ...campos } = it;
         campos.collection_id = it.collection_id ? (mapaCol.get(it.collection_id) || null) : null;
-        try { await Store.add(campos); existentes.add(chave); add++; }
+        try { const novo = await Store.add(campos); idsNovos.set(id, novo.id); existentes.add(chave); add++; }
         catch { /* item problemático → pula */ }
         st.textContent = `Restaurando… ${add} adicionado(s)`;
       }
-      // 3) metas
+      // 3) histórico: só das obras criadas agora (as que já existiam têm o próprio)
+      let sessoes = 0;
+      for (const s of (dados.sessions || [])) {
+        const novoId = idsNovos.get(s.item_id);
+        if (!novoId) continue;
+        try { await Store.addSession(novoId, s); sessoes++; } catch {}
+        st.textContent = `Restaurando histórico… ${sessoes}`;
+      }
+      // 4) metas
       for (const g of (dados.goals || [])) { if (g && g.year && g.target) { try { await Store.setGoal(g.year, g.target); } catch {} } }
-      st.textContent = `Restaurado: ${add} livro(s), ${pulados} já existia(m). (histórico de sessões não é restaurado)`;
+      st.textContent = `Restaurado: ${plural(add, "título", "títulos")} e ${plural(sessoes, "sessão", "sessões")}.${pulados ? ` ${plural(pulados, "título já estava", "títulos já estavam")} na estante.` : ""}`;
       toast(`Restaurado: ${plural(add, "título", "títulos")}`);
       renderBiblioteca();
     } catch (e) {
@@ -1606,11 +1632,13 @@
       .map((g) => `<span class="tag-genero">${esc(g)}</span>`).join("");
 
     // bloco de notificação: só faz sentido em mangá + modo nuvem (depende do robô)
+    // o aviso é por aparelho: ligado na obra não quer dizer que ESTE aparelho recebe
+    const avisosAqui = it.notify && "Notification" in window && Notification.permission === "granted";
     const notifBloco = (it.kind === "manga" && Store.cloud) ? `
       <div class="ficha-secao">
         <h2>Notificações</h2>
-        <button class="${it.notify ? "btn-primary" : "btn-ghost"}" id="f-notify">
-          ${ico("bell", 15)} ${it.notify ? "Desligar avisos de capítulo" : "Avisar quando sair capítulo novo"}
+        <button class="${avisosAqui ? "btn-primary" : "btn-ghost"}" id="f-notify">
+          ${ico("bell", 15)} ${avisosAqui ? "Desligar avisos de capítulo" : it.notify ? "Ligar avisos neste aparelho" : "Avisar quando sair capítulo novo"}
         </button>
         <div class="prog-dica">${it.notify
           ? `Vigiando a partir do capítulo ${it.last_notified_chapter || "?"}. Você recebe um push quando sair um novo, mesmo com o app fechado.`
@@ -1710,6 +1738,7 @@
         const patch = { status: novoStatus };
         // marcar "Lido" registra a data de conclusão (se ainda não houver)
         if (novoStatus === "lido" && !it.finished_at) patch.finished_at = hojeISO();
+        if (novoStatus === "lendo" && !it.started_at) patch.started_at = hojeISO();
         await Store.update(id, patch);
         abrirFicha(id); renderBiblioteca();
       }));
@@ -1762,7 +1791,7 @@
       // tolera ponto de milhar do Kindle (9.876 → 9876)
       const soNum = (id) => parseInt(($(id).value || "").replace(/\D/g, ""));
       const cur = soNum("f-pos-cur") || 0;
-      const tot = soNum("f-pos-tot") || null;
+      const tot = soNum("f-pos-tot") || 0;   // 0 = total a preencher; null tiraria o livro do modo posição
       const novo = await salvarPosicao(it, cur, tot);
       Object.assign(it, novo);
       const p = Math.round(progresso(novo) * 100);
@@ -1821,7 +1850,7 @@
     // --- notificações (🔔) ---
     const btnNotify = $("f-notify");
     if (btnNotify) btnNotify.addEventListener("click", async () => {
-      if (it.notify) {                              // já ligado → desligar
+      if (avisosAqui) {                             // já ligado aqui → desligar
         await Store.update(id, { notify: false });
         it.notify = false;
         abrirFicha(id);
@@ -1859,7 +1888,11 @@
       }));
 
     // --- resenha (salva ao sair do campo) ---
-    $("f-review").addEventListener("change", (e) => Store.update(id, { review: e.target.value }));
+    // salva também enquanto digita: trocar de app não dispara "change" e o Android pode fechar a Estante
+    let tResenha;
+    const salvarResenha = (e) => { clearTimeout(tResenha); Store.update(id, { review: e.target.value }); };
+    $("f-review").addEventListener("change", salvarResenha);
+    $("f-review").addEventListener("input", (e) => { clearTimeout(tResenha); tResenha = setTimeout(() => salvarResenha(e), 800); });
 
     // --- rodapé ---
     $("f-editar").onclick = () => abrirManual(it);
@@ -1913,9 +1946,11 @@
       }));
 
     // filtro local
+    let tFiltro;
     $("busca-local").addEventListener("input", (e) => {
       ui.filtro = e.target.value.trim();
-      renderBiblioteca();
+      clearTimeout(tFiltro);
+      tFiltro = setTimeout(renderBiblioteca, 200);   // cada render busca tudo na nuvem
     });
 
     // #10 filtros avançados
@@ -2056,8 +2091,15 @@
     $("app").hidden = false;
     atualizarBotaoBio();                    // #8 mostra/atualiza o botão de biometria
     const tela = restaurarNav();            // retoma aba/filtro/ordem/visão do último uso
-    await renderBiblioteca();
-    if (tela !== "biblioteca") await mostrarView(tela);  // e sobe pra Estatísticas/Histórico se era o caso
+    try {
+      await renderBiblioteca();
+      if (tela !== "biblioteca") await mostrarView(tela);  // e sobe pra Estatísticas/Histórico se era o caso
+    } catch (e) {
+      // sem rede ou Supabase fora: o boot precisa seguir, senão a tela de abertura nunca some
+      console.warn("Falha ao carregar a estante:", e);
+      toast("Não consegui carregar a estante. Verifique a conexão.");
+    }
+    sincronizarPush();
   }
 
   // ============================================================
@@ -2126,7 +2168,7 @@
 
     // aviso de conexão (offline)
     const atualizarOffline = () => { const b = $("offline-banner"); if (b) b.hidden = navigator.onLine; };
-    window.addEventListener("online", atualizarOffline);
+    window.addEventListener("online", () => { atualizarOffline(); if (!$("app").hidden) atualizarTelaAtual(); });
     window.addEventListener("offline", atualizarOffline);
     atualizarOffline();
 

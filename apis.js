@@ -2,8 +2,9 @@
    apis.js — integrações de busca externa (com reservas)
    ------------------------------------------------------------
    Livros / Quadrinhos:
-     1º Google Books  (dados ricos: páginas, sinopse, categorias)
-     2º Open Library  (reserva grátis, SEM cota, se o Google falhar)
+     Título/autor: Google Books + Open Library juntos, português primeiro
+     ISBN: Google + BrasilAPI (dados); Open Library de reserva
+     Capa: Google > Amazon por ISBN > a que a fonte trouxe > Open Library
    Mangás:
      1º MangaBaka (open source, capítulos em tempo real, capa, sinopse)
      2º Jikan/MyAnimeList  (reserva, se a MangaBaka cair)
@@ -18,11 +19,6 @@
 const APIs = (() => {
 
   const limpaHTML = (s) => (s || "").replace(/<[^>]*>/g, "").replace(/\s+\n/g, "\n").trim();
-
-  // gênero legível e uniforme: sem underscore e com Cada Palavra Capitalizada
-  // (school_life → School Life, sci-fi → Sci-Fi, comedy → Comedy)
-  const capGenero = (g) => String(g).replace(/_/g, " ").replace(/\s+/g, " ").trim()
-    .replace(/(^|[\s-])(\p{L})/gu, (_, sep, ch) => sep + ch.toUpperCase());
 
   // fetch com timeout (aborta se a API demorar demais — não trava a importação)
   async function fetchT(url, opts = {}, ms = 12000) {
@@ -60,11 +56,9 @@ const APIs = (() => {
       img.src = url;
     });
   }
-  // primeira capa que carrega, na ordem de preferência (as candidatas carregam em paralelo)
+  // primeira capa que carrega, na ordem de preferência (uma por vez: não baixa as piores à toa)
   async function primeiraCapa(candidatas) {
-    const lista = [...new Set(candidatas.filter(Boolean))];
-    const testes = lista.map((u) => imagemValida(u));
-    for (let i = 0; i < testes.length; i++) if (await testes[i]) return lista[i];   // não espera as piores
+    for (const u of new Set(candidatas.filter(Boolean))) if (await imagemValida(u)) return u;
     return "";
   }
   // troca a capa de cada resultado pela melhor disponível, sempre da mesma edição (mesmo ISBN):
@@ -303,7 +297,7 @@ const APIs = (() => {
       authors: (s.authors || []).join(", "),
       cover_url: capa,
       synopsis: limpaHTML(s.description),
-      genres: (s.genres || []).map(capGenero),   // school_life → School Life
+      genres: s.genres || [],
       total_pages: null,
       total_chapters: Number.isFinite(nch) && nch > 0 ? nch : null,
       total_volumes: Number.isFinite(nvol) && nvol > 0 ? nvol : null,
@@ -401,7 +395,5 @@ const APIs = (() => {
     return buscarLivros(termo); // livro e quadrinho
   }
 
-  return { buscar, googleBooks, openLibrary, jikanManga, anilistManga,
-           mangabakaBuscar, mangabakaInfo, capitulosLancados,
-           buscarISBN, extrairISBN, buscarCapas };
+  return { buscar, capitulosLancados, buscarISBN, buscarCapas };
 })();

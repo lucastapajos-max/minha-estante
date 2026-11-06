@@ -12,11 +12,11 @@ Revisão sênior de todo o código, com foco em segurança, robustez e limpeza p
 - **RLS (Supabase):** todas as tabelas (items, reading_sessions, tags, item_tags, goals, push_subscriptions, collections) têm RLS ligado e política `auth.uid() = user_id`. Cada usuário só vê/mexe no que é seu.
 - **Segredos:** cliente só tem a *anon key* (pública por design). `service_role` e VAPID privada ficam só como segredos do GitHub (robô). Nada sensível no bundle.
 - **Repositório limpo:** sem arquivos de teste/backup soltos, sem `console.log`/`debugger`/TODO no código.
-- **Robô (Python):** trata erro por item, limpa inscrições mortas (404/410), só marca "avisado" se o push saiu, respeita rate limit da MangaDex.
+- **Robô (Python):** trata erro por item, limpa inscrições mortas (404/410), só marca "avisado" se o push saiu, respeita rate limit da MangaBaka.
 - **Service worker:** rede-primeiro (não fica preso em versão velha), push e clique tratados.
 
 ## 🔒 Segurança endurecida (implementado)
-- [x] **CSP** (`<meta>` no index.html): `connect-src` restrito **só às APIs usadas** (Supabase, Google Books, Open Library, BrasilAPI, Jikan, AniList, MangaDex) — limita exfiltração; `img-src https:`, `script/style` self+inline. Testada: não quebra buscas, capas nem o app.
+- [x] **CSP** (`<meta>` no index.html): `connect-src` restrito **só às APIs usadas** (Supabase, Google Books, Open Library, BrasilAPI, Jikan, AniList, MangaBaka) — limita exfiltração; `img-src https:`, `script/style` self+inline. Testada: não quebra buscas, capas nem o app.
 - [x] **Cabeçalhos de segurança** (`_headers`): `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` (anti-clickjacking), `Referrer-Policy`, `Permissions-Policy` (bloqueia câmera/mic/geo/pagamento).
 
 ## 🛡️ Robustez (implementado)

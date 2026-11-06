@@ -57,5 +57,5 @@ git -C D:/Programas/Claude/estante-pwa push -u origin main
 ## Depois do deploy
 
 Com o app no ar em `https://...`, seguimos pra **Fase 3 — o robô das notificações**
-(GitHub Actions + Python + MangaDex + chaves VAPID). Aí você cria 2 segredos no repo
+(GitHub Actions + Python + MangaBaka + chaves VAPID). Aí você cria 2 segredos no repo
 e o Claude te guia.

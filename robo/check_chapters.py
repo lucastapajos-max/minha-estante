@@ -106,52 +106,70 @@ def enviar_push(sub, payload):
         return "erro"
 
 
-def main():
-    itens = sb_get("items?notify=eq.true&kind=eq.manga"
-                   "&select=id,user_id,title,mangabaka_id,last_notified_chapter,total_chapters,release_status")
-    print(f"{len(itens)} mangá(s) vigiado(s).")
-    for it in itens:
-        titulo = it["title"]
-        ultimo_avisado = it.get("last_notified_chapter") or 0
-        mid, ultimo, situacao = mangabaka_ultimo(it.get("mangabaka_id"), titulo)
-        time.sleep(0.4)  # gentileza com a API da MangaBaka
-        # situação de lançamento (ex.: releasing → completed) pro app mostrar e decidir a conclusão
-        if situacao and situacao != it.get("release_status"):
-            sb_patch(f"items?id=eq.{it['id']}", {"release_status": situacao})
-        if ultimo is None:
-            print(f"- {titulo}: sem dado de capítulo, pulando.")
-            continue
-        # guarda o id da MangaBaka se ainda não tínhamos
-        if mid and not it.get("mangabaka_id"):
-            sb_patch(f"items?id=eq.{it['id']}", {"mangabaka_id": mid})
-        if ultimo <= ultimo_avisado:
-            print(f"- {titulo}: cap {ultimo} (já avisado até {ultimo_avisado}).")
-            continue
+def acompanhados(itens):
+    """Mangás que o robô atualiza: com aviso ligado, ou com id certo na MangaBaka (busca por título pode errar)."""
+    return [i for i in itens if i.get("notify") or i.get("mangabaka_id")]
 
-        print(f"- {titulo}: NOVO capítulo {ultimo} (era {ultimo_avisado}) → notificando")
-        # atualiza o total na biblioteca JÁ (antes do push), pra o app não ficar
-        # defasado quando o usuário abrir. Só sobe, nunca diminui.
-        total_atual = it.get("total_chapters") or 0
-        if ultimo > total_atual:
-            sb_patch(f"items?id=eq.{it['id']}", {"total_chapters": ultimo})
-        subs = sb_get(f"push_subscriptions?user_id=eq.{it['user_id']}"
-                      "&select=id,endpoint,p256dh,auth")
-        payload = {
-            "title": titulo,
-            "body": f"Saiu o capítulo {ultimo}.",
-            "url": APP_URL,
-            "tag": it["id"],
-        }
-        algum_ok = False
-        for sub in subs:
-            res = enviar_push(sub, payload)
-            if res == "ok":
-                algum_ok = True
-            elif res == "expirada":
-                sb_delete(f"push_subscriptions?id=eq.{sub['id']}")
-        # só marca como avisado se pelo menos um push saiu (ou não há inscrição)
-        if algum_ok or not subs:
-            sb_patch(f"items?id=eq.{it['id']}", {"last_notified_chapter": ultimo})
+
+def checar(it):
+    titulo = it["title"]
+    ultimo_avisado = it.get("last_notified_chapter") or 0
+    mid, ultimo, situacao = mangabaka_ultimo(it.get("mangabaka_id"), titulo)
+    time.sleep(0.4)  # gentileza com a API da MangaBaka
+    # situação de lançamento (ex.: releasing → completed) pro app mostrar e decidir a conclusão
+    if situacao and situacao != it.get("release_status"):
+        sb_patch(f"items?id=eq.{it['id']}", {"release_status": situacao})
+    if not it.get("notify"):
+        return
+    if ultimo is None:
+        print(f"- {titulo}: sem dado de capítulo, pulando.")
+        return
+    # guarda o id da MangaBaka se ainda não tínhamos
+    if mid and not it.get("mangabaka_id"):
+        sb_patch(f"items?id=eq.{it['id']}", {"mangabaka_id": mid})
+    if ultimo <= ultimo_avisado:
+        print(f"- {titulo}: cap {ultimo} (já avisado até {ultimo_avisado}).")
+        return
+
+    print(f"- {titulo}: NOVO capítulo {ultimo} (era {ultimo_avisado}) → notificando")
+    # atualiza o total na biblioteca JÁ (antes do push), pra o app não ficar
+    # defasado quando o usuário abrir. Só sobe, nunca diminui.
+    total_atual = it.get("total_chapters") or 0
+    if ultimo > total_atual:
+        sb_patch(f"items?id=eq.{it['id']}", {"total_chapters": ultimo})
+    subs = sb_get(f"push_subscriptions?user_id=eq.{it['user_id']}"
+                  "&select=id,endpoint,p256dh,auth")
+    payload = {
+        "title": titulo,
+        "body": f"Saiu o capítulo {ultimo}.",
+        "url": APP_URL,
+        "tag": it["id"],
+    }
+    algum_ok = False
+    for sub in subs:
+        res = enviar_push(sub, payload)
+        if res == "ok":
+            algum_ok = True
+        elif res == "expirada":
+            sb_delete(f"push_subscriptions?id=eq.{sub['id']}")
+    # só marca como avisado se pelo menos um push saiu (ou não há inscrição)
+    if algum_ok or not subs:
+        sb_patch(f"items?id=eq.{it['id']}", {"last_notified_chapter": ultimo})
+
+
+def main():
+    itens = acompanhados(sb_get("items?kind=eq.manga"
+                                "&select=id,user_id,title,notify,mangabaka_id,last_notified_chapter,total_chapters,release_status"))
+    print(f"{len(itens)} mangá(s) acompanhado(s).")
+    falhas = 0
+    for it in itens:
+        try:
+            checar(it)
+        except Exception as e:  # um mangá com problema não pode cancelar os outros
+            print(f"  ! falhou em {it['title']}: {e}", file=sys.stderr)
+            falhas += 1
+    if falhas:
+        sys.exit(1)  # deixa o run vermelho no GitHub
 
 
 def _selftest():
@@ -159,6 +177,11 @@ def _selftest():
     assert caps_de({"total_chapters": 418.9}) == 418
     assert caps_de({"total_chapters": None}) is None
     assert caps_de({}) is None
+    assert [i["id"] for i in acompanhados([
+        {"id": 1, "notify": True, "mangabaka_id": ""},
+        {"id": 2, "notify": False, "mangabaka_id": "9"},
+        {"id": 3, "notify": False, "mangabaka_id": ""},
+    ])] == [1, 2]
     print("selftest ok")
 
 

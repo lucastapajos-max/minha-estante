@@ -35,5 +35,5 @@ Quando terminar os passos 1–4, me mande a **URL** e a **anon key** (passo 4) q
 ## O que vem depois (eu faço, com as chaves em mãos)
 - **Fase 2 — Sync:** ligo o `store.js` no Supabase + tela de login. Sua biblioteca passa a
   abrir igual no PC e no celular. Testo ao vivo antes de te entregar.
-- **Fase 3 — Robô das notificações:** GitHub Actions + Python que checa a MangaDex e te
+- **Fase 3 — Robô das notificações:** GitHub Actions + Python que checa a MangaBaka e te
   manda o push de capítulo novo. Aí você cria o repositório e cola 2 segredos (eu te guio).
