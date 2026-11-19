@@ -4,6 +4,8 @@
    Escolhe sozinho o backend:
    - Se config.js tiver chaves reais do Supabase  -> NUVEM (sync + login)
    - Senão                                        -> LOCAL (localStorage)
+   - Com ?demo no endereço -> LOCAL com a estante de exemplo de demo.js,
+     numa chave própria: não mexe nos dados de ninguém nem no Supabase.
 
    A API pública é a MESMA nos dois (list, get, add, update, remove,
    sessões, coleções, metas, push) — o resto do app não sabe nem se importa
@@ -11,7 +13,8 @@
    ============================================================ */
 const Store = (() => {
   const CFG = window.SUPABASE_CONFIG || {};
-  const temNuvem = !!(CFG.url && CFG.anonKey && !/SEU-PROJETO/.test(CFG.url) && window.supabase);
+  const DEMO = new URLSearchParams(location.search).has("demo");
+  const temNuvem = !DEMO && !!(CFG.url && CFG.anonKey && !/SEU-PROJETO/.test(CFG.url) && window.supabase);
 
   const _agora = () => new Date().toISOString();
   const _uid = () =>
@@ -103,12 +106,13 @@ const Store = (() => {
      BACKEND LOCAL (localStorage)
      ========================================================== */
   const Local = (() => {
-    const CHAVE = "estante:v1";
+    const CHAVE = DEMO ? "estante:demo" : "estante:v1";
     let cache = null;
     function _ler() {
       if (cache) return cache;
-      try { cache = JSON.parse(localStorage.getItem(CHAVE)) || { items: [], sessions: [] }; }
-      catch { cache = { items: [], sessions: [] }; }
+      const vazio = () => (DEMO && window.ESTANTE_DEMO ? structuredClone(window.ESTANTE_DEMO) : { items: [], sessions: [] });
+      try { cache = JSON.parse(localStorage.getItem(CHAVE)) || vazio(); }
+      catch { cache = vazio(); }
       cache.items = cache.items || []; cache.sessions = cache.sessions || [];
       cache.collections = cache.collections || [];
       cache.goals = cache.goals || {};        // { "2026": 20, ... }
@@ -324,6 +328,7 @@ const Store = (() => {
 
   return {
     cloud: temNuvem,
+    demo: DEMO,
     // auth (só faz algo na nuvem; no local é no-op amigável)
     session: () => backend.session(),
     signIn: (e, p) => (backend.signIn ? backend.signIn(e, p) : Promise.resolve()),

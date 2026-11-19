@@ -855,7 +855,7 @@
 
   async function atualizarBotaoBio() {
     const btn = $("btn-bio");
-    if (!(await bioSuportado())) { btn.hidden = true; return; }
+    if (Store.demo || !(await bioSuportado())) { btn.hidden = true; return; }   // no demo não há o que trancar
     btn.hidden = false;
     const ligado = localStorage.getItem("bioOn") === "1";
     btn.innerHTML = ico(ligado ? "lock" : "unlock", 18);
@@ -2187,12 +2187,13 @@
     if (Store.cloud && !sessao) {
       $("tela-login").hidden = false;
       setTimeout(() => $("login-email").focus(), 100);
-    } else if (localStorage.getItem("bioOn") === "1") {
+    } else if (!Store.demo && localStorage.getItem("bioOn") === "1") {
       // #8 sessão existe, mas está trancada por biometria
       $("tela-lock").hidden = false;
       setTimeout(desbloquear, 300);           // dispara o Windows Hello / digital de cara
     } else {
       await mostrarApp();
+      if (Store.demo) toast("Estante de exemplo: o que você mudar fica só neste navegador.");
     }
 
     // esconde splash
