@@ -443,13 +443,19 @@
       if (i === telas.length - 1) prepararImagem(d);
     };
     const ir = (n) => { if (n >= 0 && n < telas.length) { i = n; mostrar(); } };
-    const fechar = () => { document.removeEventListener("keydown", teclas); document.body.style.overflow = ""; el.remove(); };
+    const fechar = (porVoltar) => {
+      document.removeEventListener("keydown", teclas); document.body.style.overflow = ""; el.remove();
+      fecharRetroAtual = null;
+      if (!porVoltar) sairDoHistorico();   // fechou no X/Esc: tira a entrada que a retrospectiva pôs
+    };
+    fecharRetroAtual = () => fechar(true);
+    history.pushState({ estante: "retro" }, "");
     const teclas = (e) => {
       if (e.key === "Escape") fechar();
       else if (e.key === "ArrowRight") ir(i + 1);
       else if (e.key === "ArrowLeft") ir(i - 1);
     };
-    el.querySelector(".rt-fechar").onclick = fechar;
+    el.querySelector(".rt-fechar").onclick = () => fechar();
     el.querySelector(".rt-ant").onclick = () => ir(i - 1);
     el.querySelector(".rt-prox").onclick = () => ir(i + 1);
     document.addEventListener("keydown", teclas);
@@ -503,7 +509,13 @@
 
   // troca entre as abas do menu inferior (biblioteca / estatísticas / histórico)
   let telaAtual = "biblioteca";
-  async function mostrarView(view) {
+  async function mostrarView(view, porVoltar) {
+    // sair da Biblioteca põe uma entrada no histórico (o "voltar" do Android traz de volta);
+    // voltar pra Biblioteca pelo menu tira essa entrada
+    if (!porVoltar && view !== telaAtual) {
+      if (telaAtual === "biblioteca") history.pushState({ estante: "tela" }, "");
+      else if (view === "biblioteca") sairDoHistorico();
+    }
     telaAtual = view;
     $("view-biblioteca").hidden = view !== "biblioteca";
     $("view-stats").hidden = view !== "stats";
@@ -518,6 +530,23 @@
     if (view === "stats") await renderStats();
     if (view === "historico") await renderHistorico();
   }
+  // ===== botão "voltar" do sistema (Android) =====
+  // Janela aberta, retrospectiva e telas fora da Biblioteca põem uma entrada no histórico.
+  // O "voltar" tira a de cima: fecha a janela/retrospectiva ou volta pra Biblioteca; só então sai do app.
+  let fecharRetroAtual = null, ignorarPop = 0, fechouPorVoltar = false;
+  function sairDoHistorico() { ignorarPop++; history.back(); }   // o popstate que vem disso é ignorado
+  window.addEventListener("popstate", () => {
+    if (ignorarPop) { ignorarPop--; return; }
+    if (fecharRetroAtual) return fecharRetroAtual();
+    if (document.querySelector(".modal-bg:not([hidden])")) {
+      fechouPorVoltar = true;
+      if (!$("modal-conclusao").hidden) $("conclusao-nao").click();   // resolve a pergunta pendente como "Ainda não"
+      fecharModais();
+      return;
+    }
+    if (telaAtual !== "biblioteca") mostrarView("biblioteca", true);
+  });
+
   // rebusca os dados da tela atual (sem trocar de view)
   function atualizarTelaAtual() {
     if (telaAtual === "stats") return renderStats();
@@ -2056,17 +2085,17 @@
     $("filtro-status").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.st === ui.status)));
   }
 
-  // guarda/retoma a navegação (aba, filtro, ordem, grade/lista, tela) entre refreshs
+  // navegação: aba, filtro e tela valem só enquanto o app está aberto (sessionStorage sobrevive ao
+  // recarregar, mas some quando o app é fechado → reabre em Livros > Lendo). Ordem e grade/lista ficam pra sempre.
   function salvarNav() {
     try {
-      localStorage.setItem("nav", JSON.stringify({
-        kind: ui.kind, status: ui.status, view: ui.view, ordem: ui.ordem, tela: telaAtual,
-      }));
+      sessionStorage.setItem("nav", JSON.stringify({ kind: ui.kind, status: ui.status, tela: telaAtual }));
+      localStorage.setItem("nav", JSON.stringify({ view: ui.view, ordem: ui.ordem }));
     } catch {}
   }
   function restaurarNav() {
     let nav = {};
-    try { nav = JSON.parse(localStorage.getItem("nav")) || {}; } catch {}
+    try { nav = { ...JSON.parse(localStorage.getItem("nav")), ...JSON.parse(sessionStorage.getItem("nav")) }; } catch {}
     const KINDS = ["livro", "quadrinho", "manga"];
     const STATUS = ["todos", "lendo", "quero_ler", "lido", "pausado", "abandonado"];
     const VIEWS = ["grid", "list"];
@@ -2110,6 +2139,16 @@
 
   // modais: semântica de diálogo; o foco entra ao abrir e volta pra origem ao fechar
   function prepararModais() {
+    // uma entrada só pra "tem janela aberta" (trocar de uma janela pra outra não mexe no histórico)
+    const fundos = [...document.querySelectorAll(".modal-bg")];
+    let haviaAberta = false;
+    new MutationObserver(() => {
+      const aberta = fundos.some((b) => !b.hidden);
+      if (aberta && !haviaAberta) history.pushState({ estante: "janela" }, "");
+      else if (!aberta && haviaAberta) { if (fechouPorVoltar) fechouPorVoltar = false; else sairDoHistorico(); }
+      haviaAberta = aberta;
+    }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ["hidden"] });
+
     document.querySelectorAll(".modal-bg").forEach((bg) => {
       const m = bg.querySelector(".modal");
       if (!m) return;
