@@ -96,6 +96,11 @@ def enviar_push(sub, payload):
             vapid_private_key=PEM_PATH,
             vapid_claims={"sub": VAPID_SUBJECT},
             timeout=30,
+            # sem ttl a biblioteca manda validade 0: celular em repouso ou Firefox fechado
+            # na hora do envio e o serviço de push DESCARTA o aviso. 3 dias de validade +
+            # urgência alta (acorda o Android do modo de economia).
+            ttl=3 * 24 * 3600,
+            headers={"Urgency": "high"},
         )
         return "ok"
     except WebPushException as e:

@@ -1,7 +1,7 @@
 /* Service worker — "rede primeiro" pro app.
    Online: sempre pega a versão fresca (e atualiza o cache).
    Offline: cai pro cache. Evita ficar preso em versão antiga. */
-const VERSAO = "estante-v82";
+const VERSAO = "estante-v83";
 const SHELL = [
   "./", "index.html", "styles.css",
   "config.js", "vendor/supabase.js",
@@ -32,6 +32,7 @@ self.addEventListener("push", (e) => {
     icon: "icon.svg",
     badge: "icon.svg",
     tag: dados.tag || undefined,          // agrupa notificações do mesmo mangá
+    renotify: !!dados.tag,                // ...mas toca e vibra de novo (sem isso, a do capítulo anterior ainda na bandeja era trocada em silêncio)
     data: { url: dados.url || "./" },
     vibrate: [80, 40, 80],
   };
