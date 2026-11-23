@@ -36,7 +36,7 @@ Revisão sênior de todo o código, com foco em segurança, robustez e limpeza p
 ## 📋 Recomendações (opcionais, futuro)
 - **Backup/export:** um botão "exportar meus dados" (JSON) dá tranquilidade extra — hoje os dados vivem no Supabase (com backup do provedor) e o histórico local.
 - **CSP via header também:** a CSP está no `<meta>` (portátil). Duplicar como header no `_headers` é possível, mas o `<meta>` já cobre o essencial.
-- **Fila offline:** escritas feitas offline não são enfileiradas (o app é online-first). Aceitável pro uso, mas dá pra evoluir.
+- [x] **Fila offline (nov/2026):** sem internet, progresso, nota, status e sessões entram numa fila (`estante:fila`) e sobem quando a conexão volta; o app abre com o último retrato da estante (`estante:retrato`).
 - **Rotação da anon key:** se algum dia o repo virar público, a anon key exposta continua segura (RLS), mas rotacionar é boa prática.
 
 ## Como foi validado

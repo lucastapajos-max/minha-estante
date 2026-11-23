@@ -2164,12 +2164,20 @@
     return TELAS.includes(nav.tela) ? nav.tela : "biblioteca";
   }
 
+  // envia o que foi registrado sem internet; avisa só quando enviou algo
+  async function enviarPendentes() {
+    const n = await Store.sincronizar().catch(() => 0);
+    if (n) toast(`Sincronizado: ${plural(n, "alteração feita sem internet", "alterações feitas sem internet")}`);
+    return n;
+  }
+
   // mostra a biblioteca (usuário autenticado ou modo local)
   async function mostrarApp() {
     $("btn-sair").hidden = !Store.cloud;   // botão sair só na nuvem
     $("app").hidden = false;
     atualizarBotaoBio();                    // #8 mostra/atualiza o botão de biometria
     const tela = restaurarNav();            // retoma aba/filtro/ordem/visão do último uso
+    await enviarPendentes();               // o que foi registrado sem internet sobe antes de mostrar a estante
     try {
       await renderBiblioteca();
       if (tela !== "biblioteca") await mostrarView(tela);  // e sobe pra Estatísticas/Histórico se era o caso
@@ -2257,7 +2265,7 @@
 
     // aviso de conexão (offline)
     const atualizarOffline = () => { const b = $("offline-banner"); if (b) b.hidden = navigator.onLine; };
-    window.addEventListener("online", () => { atualizarOffline(); if (!$("app").hidden) atualizarTelaAtual(); });
+    window.addEventListener("online", async () => { atualizarOffline(); if (!$("app").hidden) { await enviarPendentes(); atualizarTelaAtual(); } });
     window.addEventListener("offline", atualizarOffline);
     atualizarOffline();
 

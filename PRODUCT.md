@@ -49,7 +49,9 @@ seguidores, sem feed. O que um app genérico não oferece junto:
 
 ## Capabilities and Constraints
 
-- PWA estático (HTML/CSS/JS puro, **sem build e sem Node**), offline via service worker.
+- PWA estático (HTML/CSS/JS puro, **sem build e sem Node**), offline via service worker. Sem internet, o app
+  abre com o último retrato da estante e guarda progresso, nota, status e sessões numa fila que sobe quando a
+  conexão volta (adicionar, remover e coleções precisam de internet).
 - Dados no **Supabase** (login por e-mail/senha, RLS); modo local em localStorage pra testes.
 - Deploy em Cloudflare Workers (`minha-estante.lucastapajos.workers.dev`) a cada `git push`.
 - Buscas externas: Google Books / Open Library / BrasilAPI (livros), MangaBaka (mangás; Jikan/AniList
@@ -58,7 +60,8 @@ seguidores, sem feed. O que um app genérico não oferece junto:
 - Tudo em **português do Brasil**.
 - A categoria **Quadrinhos** existe no código, mas está oculta na interface porque o dono não lê
   quadrinhos hoje. Reativar é uma decisão do dono.
-- **Em aberto:** como será a versão demo do portfólio (dados de exemplo e de onde vêm, sem Supabase).
+- **Demo do portfólio:** `?demo` no endereço usa dados de exemplo (`demo.js`) no próprio navegador, sem
+  login e sem tocar no Supabase.
 
 ## Brand Commitments
 

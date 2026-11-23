@@ -193,6 +193,26 @@ const Store = (() => {
     const sb = temNuvem ? window.supabase.createClient(CFG.url, CFG.anonKey) : null;
     let SESSION = null;
 
+    // ---- sem internet: último retrato da estante (pra abrir e ler offline) + fila de escritas ----
+    // shortcut: só progresso, nota, status e sessões entram na fila (o que se faz logo depois de ler);
+    // adicionar, remover e coleções continuam precisando de internet
+    const K_RETRATO = "estante:retrato", K_FILA = "estante:fila";
+    const ler = (k, padrao) => { try { return JSON.parse(localStorage.getItem(k)) ?? padrao; } catch { return padrao; } };
+    const gravar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+    const retrato = () => ler(K_RETRATO, { items: [], collections: [], sessions: [], goals: {} });
+    const mudarRetrato = (fn) => { const r = retrato(); fn(r); gravar(K_RETRATO, r); };
+    // falha de rede (sem sinal, servidor fora), não erro nos dados
+    const semRede = (e) => !navigator.onLine || /failed to fetch|networkerror|load failed|network request failed/i.test(String((e && e.message) || e));
+    const enfileirar = (op) => gravar(K_FILA, [...ler(K_FILA, []), op]);
+    async function inserirSessao(itemId, s) {
+      const row = { item_id: itemId, amount: s.amount || 0, unit: s.unit || "paginas", to_pos: s.to_pos ?? null, note: s.note || "", user_id: await uid(),
+        ...(s.date && { date: s.date }) };
+      const { data, error } = await sb.from("reading_sessions").insert(row).select().single();
+      if (error) throw error;
+      return data;
+    }
+    let sincronizando = null;   // uma sincronização por vez (abrir o app e voltar a internet podem coincidir)
+
     async function uid() {
       if (SESSION) return SESSION.user.id;
       const { data } = await sb.auth.getSession();
@@ -211,19 +231,27 @@ const Store = (() => {
         if (error) throw error;
         SESSION = data.session; return data.session;
       },
-      async signOut() { await sb.auth.signOut(); SESSION = null; },
+      // sair apaga o retrato e a fila: outra pessoa no mesmo aparelho não pode ver nem herdar
+      async signOut() { await sb.auth.signOut(); SESSION = null; localStorage.removeItem(K_RETRATO); localStorage.removeItem(K_FILA); },
       onAuthChange(cb) { sb.auth.onAuthStateChange((_e, s) => { SESSION = s; cb(s); }); },
 
       async list(kind) {
         let q = sb.from("items").select("*").order("updated_at", { ascending: false });
         if (kind) q = q.eq("kind", kind);
         const { data, error } = await q;
-        if (error) throw error;
+        if (error) {
+          if (!semRede(error)) throw error;
+          return retrato().items.filter((i) => !kind || i.kind === kind).map(normaliza);
+        }
+        mudarRetrato((r) => { r.items = r.items.filter((i) => kind && i.kind !== kind).concat(data || []); });
         return (data || []).map(normaliza);
       },
       async get(id) {
         const { data, error } = await sb.from("items").select("*").eq("id", id).maybeSingle();
-        if (error) throw error;
+        if (error) {
+          if (!semRede(error)) throw error;
+          return normaliza(retrato().items.find((i) => i.id === id) || null);
+        }
         return normaliza(data);
       },
       async add(item) {
@@ -233,10 +261,17 @@ const Store = (() => {
         return normaliza(data);
       },
       async update(id, patch) {
+        const em = _agora();
         const { data, error } = await sb.from("items")
-          .update({ ...patch, updated_at: _agora() }).eq("id", id).select().single();
-        if (error) throw error;
-        return normaliza(data);
+          .update({ ...patch, updated_at: em }).eq("id", id).select().single();
+        if (error && !semRede(error)) throw error;
+        if (error) enfileirar({ t: "update", id, patch, em });   // sem internet: vai quando voltar
+        let novo = data;
+        mudarRetrato((r) => {
+          const i = r.items.findIndex((x) => x.id === id);
+          if (i >= 0) { r.items[i] = data || { ...r.items[i], ...patch, updated_at: em }; novo = r.items[i]; }
+        });
+        return normaliza({ ...(novo || { id, ...patch }) });
       },
       async remove(id) {
         const { error } = await sb.from("items").delete().eq("id", id);
@@ -244,11 +279,38 @@ const Store = (() => {
         return true;
       },
       async addSession(itemId, s) {
-        const row = { item_id: itemId, amount: s.amount || 0, unit: s.unit || "paginas", to_pos: s.to_pos ?? null, note: s.note || "", user_id: await uid(),
-          ...(s.date && { date: s.date }) };
-        const { data, error } = await sb.from("reading_sessions").insert(row).select().single();
-        if (error) throw error;
-        return data;
+        try { return await inserirSessao(itemId, s); }
+        catch (e) {
+          if (!semRede(e)) throw e;
+          const reg = { ...s, item_id: itemId, date: s.date || _agora() };   // guarda a hora em que você leu
+          enfileirar({ t: "sessao", itemId, s: reg });
+          mudarRetrato((r) => { const it = r.items.find((x) => x.id === itemId) || {};
+            r.sessions.unshift({ ...reg, id: _uid(), item: { title: it.title, cover_url: it.cover_url, kind: it.kind } }); });
+          return reg;
+        }
+      },
+      // manda o que ficou na fila, em ordem; para no primeiro erro de rede (tenta de novo depois)
+      sincronizar() {
+        if (sincronizando) return sincronizando;
+        sincronizando = (async () => {
+          let fila = ler(K_FILA, []), feitas = 0;
+          while (fila.length) {
+            const op = fila[0];
+            try {
+              if (op.t === "update") {
+                const { error } = await sb.from("items").update({ ...op.patch, updated_at: op.em }).eq("id", op.id);
+                if (error) throw error;
+              } else if (op.t === "sessao") await inserirSessao(op.itemId, op.s);
+              feitas++;
+            } catch (e) {
+              if (semRede(e)) break;
+              console.warn("Alteração feita sem internet foi descartada:", op, e);   // ex.: obra apagada em outro aparelho
+            }
+            fila = fila.slice(1); gravar(K_FILA, fila);
+          }
+          return feitas;
+        })().finally(() => { sincronizando = null; });
+        return sincronizando;
       },
       async listAllSessions(limit = 200) {
         const todas = [];
@@ -258,10 +320,14 @@ const Store = (() => {
             .select("*, item:items(title, cover_url, kind)")
             .order("date", { ascending: false }).order("id")
             .range(todas.length, todas.length + tam - 1);
-          if (error) throw error;
+          if (error) {
+            if (!semRede(error)) throw error;
+            return retrato().sessions.slice(0, limit);
+          }
           todas.push(...(data || []));
           if (!data || data.length < tam) break;
         }
+        mudarRetrato((r) => { if (todas.length >= r.sessions.length || limit >= 1000) r.sessions = todas; });
         return todas;
       },
       async removeSession(id) {
@@ -276,7 +342,11 @@ const Store = (() => {
       // ---- coleções (Onda C) ----
       async listCollections() {
         const { data, error } = await sb.from("collections").select("*").order("name");
-        if (error) throw error;
+        if (error) {
+          if (!semRede(error)) throw error;
+          return retrato().collections;
+        }
+        mudarRetrato((r) => { r.collections = data || []; });
         return data || [];
       },
       async addCollection(name, kind) {
@@ -293,7 +363,11 @@ const Store = (() => {
       },
       async getGoal(year) {
         const { data, error } = await sb.from("goals").select("target").eq("year", year).maybeSingle();
-        if (error) throw error;
+        if (error) {
+          if (!semRede(error)) throw error;
+          return (retrato().goals || {})[year] || 0;
+        }
+        mudarRetrato((r) => { r.goals = { ...(r.goals || {}), [year]: data ? data.target : 0 }; });
         return data ? data.target : 0;
       },
       async setGoal(year, target) {
@@ -352,6 +426,8 @@ const Store = (() => {
     getGoal: (y) => backend.getGoal(y),
     setGoal: (y, t) => backend.setGoal(y, t),
     listGoals: () => backend.listGoals(),
+    // sem internet: envia o que ficou guardado (no modo local não há o que enviar)
+    sincronizar: () => (backend.sincronizar ? backend.sincronizar() : Promise.resolve(0)),
     // push
     salvarInscricaoPush: (sub) => backend.salvarInscricaoPush && backend.salvarInscricaoPush(sub),
   };
