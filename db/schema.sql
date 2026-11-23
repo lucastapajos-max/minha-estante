@@ -46,6 +46,7 @@ create table if not exists items (
   finished_at    date,
   format         text,                             -- 'fisico' | 'digital' | null
   collection_id  uuid,                             -- FK lógica p/ collections
+  collection_pos numeric,                           -- nº na série (2, ou 1.5 p/ conto entre livros)
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now()
 );

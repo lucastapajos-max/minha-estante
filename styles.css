@@ -245,7 +245,8 @@ input { font-family: inherit; }
 .fmt-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--txt-suave); background: var(--bg-card-2); border-radius: var(--pill); padding: 2px 8px; white-space: nowrap; }
 .col-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--acento-2); background: transparent; border: 1px solid var(--linha); border-radius: var(--pill); padding: 2px 8px; white-space: nowrap; max-width: 100%; overflow: hidden; }
 .colecao-linha { display: flex; gap: 8px; align-items: center; }
-.colecao-linha select { flex: 1; }
+.colecao-linha select { flex: 1; min-width: 0; }
+.colecao-linha #f-colecao-pos { flex: 0 0 64px; width: 64px; text-align: center; }
 .colecao-linha .btn-ghost { flex: 0 0 auto; white-space: nowrap; }
 
 /* ===== Biblioteca: lista ===== */
@@ -641,3 +642,15 @@ body:has(.modal-bg:not([hidden])) .toast { top: 16px; bottom: auto; }
   .filtros-avancados .view-toggle .vt { flex: 1 1 0; }
   #fa-limpar { justify-self: start; align-self: center; }
 }
+
+/* ===== Séries: selo tocável e cabeçalho da série ===== */
+button.col-badge { font-family: inherit; cursor: pointer; }
+button.col-badge:hover { border-color: var(--txt-fraco); }
+.serie-cab { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 4px 0 18px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--linha); }
+.serie-cab[hidden] { display: none; }
+.serie-nome { margin: 0; font-size: 26px; font-weight: 800; line-height: 1; letter-spacing: -.03em; }
+.serie-conta { margin: 6px 0 0; font-size: 14px; font-weight: 300; color: var(--txt-suave); }
+.serie-cab .btn-ghost { flex: 0 0 auto; }
+/* sinopse recolhida, no mesmo molde do bloco de datas */
+.ficha-sinopse .sinopse { margin-top: 10px; }

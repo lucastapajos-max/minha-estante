@@ -544,6 +544,7 @@
       fecharModais();
       return;
     }
+    if (antesDaSerie && telaAtual === "biblioteca") return sairDaSerie(true);
     if (telaAtual !== "biblioteca") mostrarView("biblioteca", true);
   });
 
@@ -1056,8 +1057,16 @@
     if (ui.adv.autor) itens = itens.filter((i) => (i.authors || "") === ui.adv.autor);
     if (ui.adv.colecao) itens = itens.filter((i) => i.collection_id === ui.adv.colecao);
 
-    // ordenação
+    // ordenação (dentro de uma série, a ordem é a da série: #1, #2… e os sem número no fim)
     itens.sort(ORDENADORES[ui.ordem] || ORDENADORES.recentes);
+    if (ui.adv.colecao) itens.sort((a, b) => (a.collection_pos ?? 1e9) - (b.collection_pos ?? 1e9));
+    const cab = $("serie-cab");
+    if (cab) cab.hidden = !ui.adv.colecao;
+    if (cab && ui.adv.colecao) {
+      const lidos = itens.filter((i) => i.status === "lido").length;
+      cab.querySelector(".serie-nome").textContent = nomeColecao(ui.adv.colecao) || "Série";
+      cab.querySelector(".serie-conta").textContent = `${lidos} de ${itens.length} ${itens.length === 1 ? "lido" : "lidos"}`;
+    }
     // fila "Próxima leitura": no Quero ler, quem já tem lugar na fila vem antes, na ordem da fila
     // (sort estável: o resto mantém a ordenação escolhida)
     const naFila = ui.status === "quero_ler";
@@ -1112,7 +1121,7 @@
       const fmtBadge = i.format
         ? `<span class="fmt-badge">${ico(i.format === "fisico" ? "bookopen" : "phone", 13)} ${i.format === "fisico" ? "Físico" : "Digital"}</span>` : "";
       const colNome = i.collection_id ? nomeColecao(i.collection_id) : "";
-      const colBadge = colNome ? `<span class="col-badge">${ico("layers", 13)} ${esc(colNome)}</span>` : "";
+      const colBadge = colNome ? `<button type="button" class="col-badge" data-serie="${esc(i.collection_id)}" title="Ver a série">${ico("layers", 13)} ${esc(colNome)}${i.collection_pos != null ? ` #${numSerie(i.collection_pos)}` : ""}</button>` : "";
 
       if (ui.view === "list") {
         return `<div class="card" data-id="${i.id}">
@@ -1172,6 +1181,11 @@
       c.addEventListener("touchcancel", cancelaLP);
     });
 
+    wrap.querySelectorAll("[data-serie]").forEach((b) => b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      abrirSerie(b.dataset.serie);
+    }));
+
     // fila: ↑/↓ e "Começar a ler" (não abrem a ficha)
     wrap.querySelectorAll("[data-mover]").forEach((b) => b.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -1185,6 +1199,28 @@
       renderBiblioteca();
     }));
   }
+
+  // série: a própria Biblioteca filtrada pela coleção, todos os status, na ordem da série.
+  // Guarda como estava antes pra "Sair da série" e o voltar do Android devolverem.
+  let antesDaSerie = null;
+  function abrirSerie(cid) {
+    if (!antesDaSerie) {
+      antesDaSerie = { status: ui.status, adv: { ...ui.adv }, filtro: ui.filtro };
+      history.pushState({ estante: "serie" }, "");
+    }
+    ui.adv = { genero: "", formato: "", ano: "", autor: "", colecao: cid };
+    ui.status = "todos"; ui.filtro = ""; $("busca-local").value = "";
+    marcarStatus(); window.scrollTo(0, 0); renderBiblioteca();
+  }
+  function sairDaSerie(porVoltar) {
+    if (!antesDaSerie) return;
+    ({ status: ui.status, adv: ui.adv, filtro: ui.filtro } = antesDaSerie);
+    antesDaSerie = null;
+    $("busca-local").value = ui.filtro;
+    if (!porVoltar) sairDoHistorico();
+    marcarStatus(); renderBiblioteca();
+  }
+  const numSerie = (n) => String(Number(n)).replace(".", ",");   // 2 → "2", 1.5 → "1,5"
 
   // troca o item de lugar com o vizinho e grava só quem mudou de posição
   // (na primeira vez a fila inteira ganha número; depois são 2 escritas)
@@ -1713,7 +1749,7 @@
 
       ${notifBloco}
 
-      <details class="ficha-mais"${fichaMaisAberta ? " open" : ""}>
+      <details class="ficha-mais" id="f-mais"${fichaMaisAberta ? " open" : ""}>
         <summary>Datas, formato e coleção</summary>
       <div class="ficha-secao">
         <h2>Datas</h2>
@@ -1743,13 +1779,15 @@
             <option value="">Nenhuma</option>
             ${colecoes.map((c) => `<option value="${esc(c.id)}" ${it.collection_id === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}
           </select>
+          <input class="input" id="f-colecao-pos" aria-label="Número na série" placeholder="nº" inputmode="decimal"
+            value="${it.collection_pos != null ? numSerie(it.collection_pos) : ""}"${it.collection_id ? "" : " disabled"}>
           <button class="btn-ghost" id="f-nova-colecao" type="button">＋ Nova</button>
         </div>
       </div>
 
       </details>
 
-      ${it.synopsis ? `<div class="ficha-secao"><h2>Sinopse</h2><div class="sinopse">${esc(it.synopsis)}</div></div>` : ""}
+      ${it.synopsis ? `<details class="ficha-mais ficha-sinopse"><summary>Sinopse</summary><div class="sinopse">${esc(it.synopsis)}</div></details>` : ""}
 
       <div class="ficha-rodape">
         <button class="btn-ghost ico-btn" id="f-editar">${ico("pencil", 15)} Editar</button>
@@ -1758,7 +1796,7 @@
       </div>`;
 
     $("modal-ficha").hidden = false;
-    corpo.querySelector(".ficha-mais").addEventListener("toggle", (e) => { fichaMaisAberta = e.target.open; });
+    $("f-mais").addEventListener("toggle", (e) => { fichaMaisAberta = e.target.open; });
 
     // --- status ---
     corpo.querySelectorAll("#f-status .status-op").forEach((b) =>
@@ -1784,6 +1822,16 @@
     $("f-colecao").addEventListener("change", async (e) => {
       await Store.update(id, { collection_id: e.target.value || null });
       it.collection_id = e.target.value || null;
+      $("f-colecao-pos").disabled = !it.collection_id;
+      renderBiblioteca();
+    });
+    // nº na série: aceita "2" ou "1,5" (conto entre dois livros); vazio tira o número
+    $("f-colecao-pos").addEventListener("change", async (e) => {
+      const v = e.target.value.trim().replace(",", ".");
+      const n = v === "" ? null : Number(v);
+      if (n !== null && !(n > 0)) { toast("Use um número, como 2 ou 1,5"); e.target.value = it.collection_pos != null ? numSerie(it.collection_pos) : ""; return; }
+      await Store.update(id, { collection_pos: n });
+      it.collection_pos = n;
       renderBiblioteca();
     });
     $("f-nova-colecao").addEventListener("click", async () => {
@@ -1993,9 +2041,11 @@
     Object.keys(mapAdv).forEach((fid) =>
       $(fid).addEventListener("change", (e) => { ui.adv[mapAdv[fid]] = e.target.value; renderBiblioteca(); }));
     $("fa-limpar").addEventListener("click", () => {
+      if (antesDaSerie) return sairDaSerie();
       ui.adv = { genero: "", formato: "", ano: "", autor: "", colecao: "" };
       renderBiblioteca();
     });
+    $("serie-sair")?.addEventListener("click", () => sairDaSerie());   // ?. : HTML antigo em cache não pode travar a abertura
 
     // adicionar
     $("btn-adicionar").addEventListener("click", abrirAdd);

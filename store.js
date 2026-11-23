@@ -54,6 +54,7 @@ const Store = (() => {
       finished_at: item.finished_at ?? null,
       format: item.format ?? null,          // 'fisico' | 'digital' | null
       collection_id: item.collection_id ?? null,
+      ...(item.collection_pos != null && { collection_pos: item.collection_pos }),   // nº na série (migration_v12)
     };
   }
 
